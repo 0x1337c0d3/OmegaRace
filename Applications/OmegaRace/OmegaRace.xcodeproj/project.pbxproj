@@ -1,0 +1,675 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		C923A7622045D22F008E51CD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C923A7612045D22F008E51CD /* Assets.xcassets */; };
+		D01EF0E12AB9AA7F00641E98 /* libfmodstudio.dylib in Copy Bundle Frameworks */ = {isa = PBXBuildFile; fileRef = D0293A312AB9A49A00866D1E /* libfmodstudio.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D01EF0E42AB9ABB400641E98 /* Master.bank in Resources */ = {isa = PBXBuildFile; fileRef = D01EF0E22AB9AB2C00641E98 /* Master.bank */; };
+		D01EF0E52AB9ABB600641E98 /* Master.strings.bank in Resources */ = {isa = PBXBuildFile; fileRef = D01EF0E32AB9AB2C00641E98 /* Master.strings.bank */; };
+		D0293A292AB94F5000866D1E /* libfmod.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D0293A282AB94F5000866D1E /* libfmod.dylib */; };
+		D0293A2A2AB94F5000866D1E /* libfmod.dylib in Copy Bundle Frameworks */ = {isa = PBXBuildFile; fileRef = D0293A282AB94F5000866D1E /* libfmod.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D0293A302AB9A44400866D1E /* AudioEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0293A2E2AB9A44400866D1E /* AudioEngine.cpp */; };
+		D0293A322AB9A49A00866D1E /* libfmodstudio.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D0293A312AB9A49A00866D1E /* libfmodstudio.dylib */; };
+		D0293A352AB9A4E600866D1E /* Logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0293A332AB9A4E600866D1E /* Logger.cpp */; };
+		D08A40302E610237007AF81D /* VapourTrail.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D08A402F2E610237007AF81D /* VapourTrail.cpp */; };
+		D08A40312E615E00007AF81D /* Rock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CC72AB7FA3A0024B5C3 /* Rock.cpp */; };
+		D097313F2E607CEC00E48F4A /* libraylib.5.5.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D097313E2E607CEC00E48F4A /* libraylib.5.5.0.dylib */; };
+		D09731402E607CEC00E48F4A /* libraylib.5.5.0.dylib in Copy Bundle Frameworks */ = {isa = PBXBuildFile; fileRef = D097313E2E607CEC00E48F4A /* libraylib.5.5.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D09731432E607EF500E48F4A /* Window.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D09731422E607EF500E48F4A /* Window.cpp */; };
+		D0B059E82E61A35900D159DC /* bloom.fs in Resources */ = {isa = PBXBuildFile; fileRef = D0B059E62E61A35900D159DC /* bloom.fs */; };
+		D0B059EB2E61A36600D159DC /* icon.png in Resources */ = {isa = PBXBuildFile; fileRef = D0B059E92E61A36600D159DC /* icon.png */; };
+		D0B059EC2E61A36600D159DC /* icon_1024.png in Resources */ = {isa = PBXBuildFile; fileRef = D0B059EA2E61A36600D159DC /* icon_1024.png */; };
+		D0FF2CB42AB7FA3A0024B5C3 /* UFO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CBA2AB7FA3A0024B5C3 /* UFO.cpp */; };
+		D0FF2CE02AB7FA3A0024B5C3 /* EnemyController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2C9E2AB7FA3A0024B5C3 /* EnemyController.cpp */; };
+		D0FF2CE12AB7FA3A0024B5C3 /* Common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CA02AB7FA3A0024B5C3 /* Common.cpp */; };
+		D0FF2CE22AB7FA3A0024B5C3 /* Borders.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CA22AB7FA3A0024B5C3 /* Borders.cpp */; };
+		D0FF2CE32AB7FA3A0024B5C3 /* TriShip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CA32AB7FA3A0024B5C3 /* TriShip.cpp */; };
+		D0FF2CE42AB7FA3A0024B5C3 /* Player.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CA42AB7FA3A0024B5C3 /* Player.cpp */; };
+		D0FF2CE52AB7FA3A0024B5C3 /* Explosion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CA72AB7FA3A0024B5C3 /* Explosion.cpp */; };
+		D0FF2CE62AB7FA3A0024B5C3 /* Entity.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CA92AB7FA3A0024B5C3 /* Entity.cpp */; };
+		D0FF2CE82AB7FA3A0024B5C3 /* LeadEnemy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CAC2AB7FA3A0024B5C3 /* LeadEnemy.cpp */; };
+		D0FF2CE92AB7FA3A0024B5C3 /* FollowEnemy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CAE2AB7FA3A0024B5C3 /* FollowEnemy.cpp */; };
+		D0FF2CEA2AB7FA3A0024B5C3 /* Timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CB02AB7FA3A0024B5C3 /* Timer.cpp */; };
+		D0FF2CEB2AB7FA3A0024B5C3 /* StatusDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CB12AB7FA3A0024B5C3 /* StatusDisplay.cpp */; };
+		D0FF2CEC2AB7FA3A0024B5C3 /* PlayerExplosionLine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CB72AB7FA3A0024B5C3 /* PlayerExplosionLine.cpp */; };
+		D0FF2CEE2AB7FA3A0024B5C3 /* Letter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CBB2AB7FA3A0024B5C3 /* Letter.cpp */; };
+		D0FF2CEF2AB7FA3A0024B5C3 /* Shot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CBC2AB7FA3A0024B5C3 /* Shot.cpp */; };
+		D0FF2CF02AB7FA3A0024B5C3 /* PlayerShot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CC12AB7FA3A0024B5C3 /* PlayerShot.cpp */; };
+		D0FF2CF12AB7FA3A0024B5C3 /* GameController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CC22AB7FA3A0024B5C3 /* GameController.cpp */; };
+		D0FF2CF22AB7FA3A0024B5C3 /* Mine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CC32AB7FA3A0024B5C3 /* Mine.cpp */; };
+		D0FF2CF42AB7FA3A0024B5C3 /* Fighter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CCA2AB7FA3A0024B5C3 /* Fighter.cpp */; };
+		D0FF2CF52AB7FA3A0024B5C3 /* DoubleMine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CCE2AB7FA3A0024B5C3 /* DoubleMine.cpp */; };
+		D0FF2CF62AB7FA3A0024B5C3 /* Enemy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CCF2AB7FA3A0024B5C3 /* Enemy.cpp */; };
+		D0FF2CF72AB7FA3A0024B5C3 /* vmath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CD02AB7FA3A0024B5C3 /* vmath.cpp */; };
+		D0FF2CF82AB7FA3A0024B5C3 /* FighterShip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CD42AB7FA3A0024B5C3 /* FighterShip.cpp */; };
+		D0FF2CFB2AB7FA3A0024B5C3 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CD72AB7FA3A0024B5C3 /* main.cpp */; };
+		D0FF2CFD2AB7FA3A0024B5C3 /* Ship.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CD92AB7FA3A0024B5C3 /* Ship.cpp */; };
+		D0FF2CFE2AB7FA3A0024B5C3 /* ExplosionLine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CDA2AB7FA3A0024B5C3 /* ExplosionLine.cpp */; };
+		D0FF2CFF2AB7FA3A0024B5C3 /* Number.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CDB2AB7FA3A0024B5C3 /* Number.cpp */; };
+		D0FF2D002AB7FA3A0024B5C3 /* Game.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CDC2AB7FA3A0024B5C3 /* Game.cpp */; };
+		D0FF2D012AB7FA3A0024B5C3 /* PlayerShip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0FF2CDD2AB7FA3A0024B5C3 /* PlayerShip.cpp */; };
+		D0FF2D112AB7FA6F0024B5C3 /* PlayerHit.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D072AB7FA6F0024B5C3 /* PlayerHit.wav */; };
+		D0FF2D122AB7FA6F0024B5C3 /* PlayerShot.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D082AB7FA6F0024B5C3 /* PlayerShot.wav */; };
+		D0FF2D132AB7FA6F0024B5C3 /* LeadEnemyHit.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D092AB7FA6F0024B5C3 /* LeadEnemyHit.wav */; };
+		D0FF2D142AB7FA6F0024B5C3 /* Bonus.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D0A2AB7FA6F0024B5C3 /* Bonus.wav */; };
+		D0FF2D152AB7FA6F0024B5C3 /* Thrust.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D0B2AB7FA6F0024B5C3 /* Thrust.wav */; };
+		D0FF2D162AB7FA6F0024B5C3 /* FollowerHit.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D0C2AB7FA6F0024B5C3 /* FollowerHit.wav */; };
+		D0FF2D172AB7FA6F0024B5C3 /* FighterHit.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D0D2AB7FA6F0024B5C3 /* FighterHit.wav */; };
+		D0FF2D182AB7FA6F0024B5C3 /* MineHit.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D0E2AB7FA6F0024B5C3 /* MineHit.wav */; };
+		D0FF2D192AB7FA6F0024B5C3 /* EnemyHit.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D0F2AB7FA6F0024B5C3 /* EnemyHit.wav */; };
+		D0FF2D1A2AB7FA6F0024B5C3 /* BorderHit.wav in Resources */ = {isa = PBXBuildFile; fileRef = D0FF2D102AB7FA6F0024B5C3 /* BorderHit.wav */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C979C33C204871C0001D8695 /* Copy Bundle Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				D09731402E607CEC00E48F4A /* libraylib.5.5.0.dylib in Copy Bundle Frameworks */,
+				D01EF0E12AB9AA7F00641E98 /* libfmodstudio.dylib in Copy Bundle Frameworks */,
+				D0293A2A2AB94F5000866D1E /* libfmod.dylib in Copy Bundle Frameworks */,
+			);
+			name = "Copy Bundle Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		C923A7582045D22F008E51CD /* OmegaRace.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OmegaRace.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C923A7612045D22F008E51CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D01EF0E22AB9AB2C00641E98 /* Master.bank */ = {isa = PBXFileReference; lastKnownFileType = file; path = Master.bank; sourceTree = "<group>"; };
+		D01EF0E32AB9AB2C00641E98 /* Master.strings.bank */ = {isa = PBXFileReference; lastKnownFileType = file; path = Master.strings.bank; sourceTree = "<group>"; };
+		D0293A282AB94F5000866D1E /* libfmod.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libfmod.dylib; path = ../../ThirdParty/fmod/osx/lib/libfmod.dylib; sourceTree = "<group>"; };
+		D0293A2E2AB9A44400866D1E /* AudioEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AudioEngine.cpp; sourceTree = "<group>"; };
+		D0293A2F2AB9A44400866D1E /* AudioEngine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioEngine.h; sourceTree = "<group>"; };
+		D0293A312AB9A49A00866D1E /* libfmodstudio.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libfmodstudio.dylib; path = ../../ThirdParty/fmod/osx/lib/libfmodstudio.dylib; sourceTree = "<group>"; };
+		D0293A332AB9A4E600866D1E /* Logger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Logger.cpp; sourceTree = "<group>"; };
+		D0293A342AB9A4E600866D1E /* Logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
+		D08A402E2E610237007AF81D /* VapourTrail.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VapourTrail.h; sourceTree = "<group>"; };
+		D08A402F2E610237007AF81D /* VapourTrail.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = VapourTrail.cpp; sourceTree = "<group>"; };
+		D097313E2E607CEC00E48F4A /* libraylib.5.5.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libraylib.5.5.0.dylib; path = ../../../../../../opt/homebrew/Cellar/raylib/5.5/lib/libraylib.5.5.0.dylib; sourceTree = "<group>"; };
+		D09731412E607EF500E48F4A /* Window.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Window.h; sourceTree = "<group>"; };
+		D09731422E607EF500E48F4A /* Window.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Window.cpp; sourceTree = "<group>"; };
+		D0B059E62E61A35900D159DC /* bloom.fs */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = bloom.fs; sourceTree = "<group>"; };
+		D0B059E92E61A36600D159DC /* icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon.png; sourceTree = "<group>"; };
+		D0B059EA2E61A36600D159DC /* icon_1024.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_1024.png; sourceTree = "<group>"; };
+		D0B059ED2E626AA700D159DC /* OmegaRace.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OmegaRace.entitlements; sourceTree = "<group>"; };
+		D0FF2C9A2AB7FA320024B5C3 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D0FF2C9D2AB7FA3A0024B5C3 /* FollowEnemy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FollowEnemy.h; sourceTree = "<group>"; };
+		D0FF2C9E2AB7FA3A0024B5C3 /* EnemyController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EnemyController.cpp; sourceTree = "<group>"; };
+		D0FF2C9F2AB7FA3A0024B5C3 /* Ship.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Ship.h; sourceTree = "<group>"; };
+		D0FF2CA02AB7FA3A0024B5C3 /* Common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Common.cpp; sourceTree = "<group>"; };
+		D0FF2CA12AB7FA3A0024B5C3 /* EnemyController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EnemyController.h; sourceTree = "<group>"; };
+		D0FF2CA22AB7FA3A0024B5C3 /* Borders.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Borders.cpp; sourceTree = "<group>"; };
+		D0FF2CA32AB7FA3A0024B5C3 /* TriShip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TriShip.cpp; sourceTree = "<group>"; };
+		D0FF2CA42AB7FA3A0024B5C3 /* Player.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Player.cpp; sourceTree = "<group>"; };
+		D0FF2CA52AB7FA3A0024B5C3 /* FighterShip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FighterShip.h; sourceTree = "<group>"; };
+		D0FF2CA72AB7FA3A0024B5C3 /* Explosion.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Explosion.cpp; sourceTree = "<group>"; };
+		D0FF2CA82AB7FA3A0024B5C3 /* Rock.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Rock.h; sourceTree = "<group>"; };
+		D0FF2CA92AB7FA3A0024B5C3 /* Entity.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Entity.cpp; sourceTree = "<group>"; };
+		D0FF2CAA2AB7FA3A0024B5C3 /* DoubleMine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DoubleMine.h; sourceTree = "<group>"; };
+		D0FF2CAC2AB7FA3A0024B5C3 /* LeadEnemy.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LeadEnemy.cpp; sourceTree = "<group>"; };
+		D0FF2CAD2AB7FA3A0024B5C3 /* Fighter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Fighter.h; sourceTree = "<group>"; };
+		D0FF2CAE2AB7FA3A0024B5C3 /* FollowEnemy.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FollowEnemy.cpp; sourceTree = "<group>"; };
+		D0FF2CB02AB7FA3A0024B5C3 /* Timer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Timer.cpp; sourceTree = "<group>"; };
+		D0FF2CB12AB7FA3A0024B5C3 /* StatusDisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StatusDisplay.cpp; sourceTree = "<group>"; };
+		D0FF2CB22AB7FA3A0024B5C3 /* PlayerExplosionLine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlayerExplosionLine.h; sourceTree = "<group>"; };
+		D0FF2CB32AB7FA3A0024B5C3 /* UFO.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UFO.h; sourceTree = "<group>"; };
+		D0FF2CB52AB7FA3A0024B5C3 /* Letter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Letter.h; sourceTree = "<group>"; };
+		D0FF2CB62AB7FA3A0024B5C3 /* Player.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Player.h; sourceTree = "<group>"; };
+		D0FF2CB72AB7FA3A0024B5C3 /* PlayerExplosionLine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PlayerExplosionLine.cpp; sourceTree = "<group>"; };
+		D0FF2CB82AB7FA3A0024B5C3 /* PlayerShot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlayerShot.h; sourceTree = "<group>"; };
+		D0FF2CB92AB7FA3A0024B5C3 /* ExplosionLine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ExplosionLine.h; sourceTree = "<group>"; };
+		D0FF2CBA2AB7FA3A0024B5C3 /* UFO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = UFO.cpp; sourceTree = "<group>"; };
+		D0FF2CBB2AB7FA3A0024B5C3 /* Letter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Letter.cpp; sourceTree = "<group>"; };
+		D0FF2CBC2AB7FA3A0024B5C3 /* Shot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Shot.cpp; sourceTree = "<group>"; };
+		D0FF2CBD2AB7FA3A0024B5C3 /* Timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Timer.h; sourceTree = "<group>"; };
+		D0FF2CBE2AB7FA3A0024B5C3 /* Game.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Game.h; sourceTree = "<group>"; };
+		D0FF2CBF2AB7FA3A0024B5C3 /* TriShip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TriShip.h; sourceTree = "<group>"; };
+		D0FF2CC02AB7FA3A0024B5C3 /* Common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Common.h; sourceTree = "<group>"; };
+		D0FF2CC12AB7FA3A0024B5C3 /* PlayerShot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PlayerShot.cpp; sourceTree = "<group>"; };
+		D0FF2CC22AB7FA3A0024B5C3 /* GameController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GameController.cpp; sourceTree = "<group>"; };
+		D0FF2CC32AB7FA3A0024B5C3 /* Mine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Mine.cpp; sourceTree = "<group>"; };
+		D0FF2CC42AB7FA3A0024B5C3 /* Borders.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Borders.h; sourceTree = "<group>"; };
+		D0FF2CC52AB7FA3A0024B5C3 /* Entity.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Entity.h; sourceTree = "<group>"; };
+		D0FF2CC62AB7FA3A0024B5C3 /* Enemy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Enemy.h; sourceTree = "<group>"; };
+		D0FF2CC72AB7FA3A0024B5C3 /* Rock.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Rock.cpp; sourceTree = "<group>"; };
+		D0FF2CC82AB7FA3A0024B5C3 /* PlayerShip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlayerShip.h; sourceTree = "<group>"; };
+		D0FF2CCA2AB7FA3A0024B5C3 /* Fighter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Fighter.cpp; sourceTree = "<group>"; };
+		D0FF2CCB2AB7FA3A0024B5C3 /* StatusDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StatusDisplay.h; sourceTree = "<group>"; };
+		D0FF2CCC2AB7FA3A0024B5C3 /* LeadEnemy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LeadEnemy.h; sourceTree = "<group>"; };
+		D0FF2CCD2AB7FA3A0024B5C3 /* Number.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Number.h; sourceTree = "<group>"; };
+		D0FF2CCE2AB7FA3A0024B5C3 /* DoubleMine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DoubleMine.cpp; sourceTree = "<group>"; };
+		D0FF2CCF2AB7FA3A0024B5C3 /* Enemy.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Enemy.cpp; sourceTree = "<group>"; };
+		D0FF2CD02AB7FA3A0024B5C3 /* vmath.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vmath.cpp; sourceTree = "<group>"; };
+		D0FF2CD12AB7FA3A0024B5C3 /* GameController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GameController.h; sourceTree = "<group>"; };
+		D0FF2CD22AB7FA3A0024B5C3 /* Shot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Shot.h; sourceTree = "<group>"; };
+		D0FF2CD32AB7FA3A0024B5C3 /* Explosion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Explosion.h; sourceTree = "<group>"; };
+		D0FF2CD42AB7FA3A0024B5C3 /* FighterShip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FighterShip.cpp; sourceTree = "<group>"; };
+		D0FF2CD72AB7FA3A0024B5C3 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		D0FF2CD92AB7FA3A0024B5C3 /* Ship.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Ship.cpp; sourceTree = "<group>"; };
+		D0FF2CDA2AB7FA3A0024B5C3 /* ExplosionLine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ExplosionLine.cpp; sourceTree = "<group>"; };
+		D0FF2CDB2AB7FA3A0024B5C3 /* Number.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Number.cpp; sourceTree = "<group>"; };
+		D0FF2CDC2AB7FA3A0024B5C3 /* Game.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Game.cpp; sourceTree = "<group>"; };
+		D0FF2CDD2AB7FA3A0024B5C3 /* PlayerShip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PlayerShip.cpp; sourceTree = "<group>"; };
+		D0FF2CDE2AB7FA3A0024B5C3 /* Mine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Mine.h; sourceTree = "<group>"; };
+		D0FF2CDF2AB7FA3A0024B5C3 /* vmath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = vmath.h; sourceTree = "<group>"; };
+		D0FF2D072AB7FA6F0024B5C3 /* PlayerHit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = PlayerHit.wav; sourceTree = "<group>"; };
+		D0FF2D082AB7FA6F0024B5C3 /* PlayerShot.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = PlayerShot.wav; sourceTree = "<group>"; };
+		D0FF2D092AB7FA6F0024B5C3 /* LeadEnemyHit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = LeadEnemyHit.wav; sourceTree = "<group>"; };
+		D0FF2D0A2AB7FA6F0024B5C3 /* Bonus.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Bonus.wav; sourceTree = "<group>"; };
+		D0FF2D0B2AB7FA6F0024B5C3 /* Thrust.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = Thrust.wav; sourceTree = "<group>"; };
+		D0FF2D0C2AB7FA6F0024B5C3 /* FollowerHit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = FollowerHit.wav; sourceTree = "<group>"; };
+		D0FF2D0D2AB7FA6F0024B5C3 /* FighterHit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = FighterHit.wav; sourceTree = "<group>"; };
+		D0FF2D0E2AB7FA6F0024B5C3 /* MineHit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = MineHit.wav; sourceTree = "<group>"; };
+		D0FF2D0F2AB7FA6F0024B5C3 /* EnemyHit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = EnemyHit.wav; sourceTree = "<group>"; };
+		D0FF2D102AB7FA6F0024B5C3 /* BorderHit.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = BorderHit.wav; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C923A7552045D22F008E51CD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D097313F2E607CEC00E48F4A /* libraylib.5.5.0.dylib in Frameworks */,
+				D0293A292AB94F5000866D1E /* libfmod.dylib in Frameworks */,
+				D0293A322AB9A49A00866D1E /* libfmodstudio.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C923A74F2045D22F008E51CD = {
+			isa = PBXGroup;
+			children = (
+				C923A75A2045D22F008E51CD /* OmegaRace */,
+				C96F46902048789F002630EE /* Frameworks */,
+				C923A7592045D22F008E51CD /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C923A7592045D22F008E51CD /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C923A7582045D22F008E51CD /* OmegaRace.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C923A75A2045D22F008E51CD /* OmegaRace */ = {
+			isa = PBXGroup;
+			children = (
+				D0B059ED2E626AA700D159DC /* OmegaRace.entitlements */,
+				D0FF2C9C2AB7FA3A0024B5C3 /* src */,
+				C923A7612045D22F008E51CD /* Assets.xcassets */,
+				D0FF2C9A2AB7FA320024B5C3 /* Info.plist */,
+				D0FF2D062AB7FA6F0024B5C3 /* Resources */,
+			);
+			path = OmegaRace;
+			sourceTree = "<group>";
+		};
+		C96F46902048789F002630EE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D097313E2E607CEC00E48F4A /* libraylib.5.5.0.dylib */,
+				D0293A282AB94F5000866D1E /* libfmod.dylib */,
+				D0293A312AB9A49A00866D1E /* libfmodstudio.dylib */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D0B059E72E61A35900D159DC /* shaders */ = {
+			isa = PBXGroup;
+			children = (
+				D0B059E62E61A35900D159DC /* bloom.fs */,
+			);
+			path = shaders;
+			sourceTree = "<group>";
+		};
+		D0FF2C9C2AB7FA3A0024B5C3 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				D0293A2E2AB9A44400866D1E /* AudioEngine.cpp */,
+				D0293A2F2AB9A44400866D1E /* AudioEngine.h */,
+				D0FF2CA22AB7FA3A0024B5C3 /* Borders.cpp */,
+				D0FF2CC42AB7FA3A0024B5C3 /* Borders.h */,
+				D0FF2CA02AB7FA3A0024B5C3 /* Common.cpp */,
+				D0FF2CC02AB7FA3A0024B5C3 /* Common.h */,
+				D0FF2CCE2AB7FA3A0024B5C3 /* DoubleMine.cpp */,
+				D0FF2CAA2AB7FA3A0024B5C3 /* DoubleMine.h */,
+				D0FF2CCF2AB7FA3A0024B5C3 /* Enemy.cpp */,
+				D0FF2CC62AB7FA3A0024B5C3 /* Enemy.h */,
+				D0FF2C9E2AB7FA3A0024B5C3 /* EnemyController.cpp */,
+				D0FF2CA12AB7FA3A0024B5C3 /* EnemyController.h */,
+				D0FF2CA92AB7FA3A0024B5C3 /* Entity.cpp */,
+				D0FF2CC52AB7FA3A0024B5C3 /* Entity.h */,
+				D0FF2CA72AB7FA3A0024B5C3 /* Explosion.cpp */,
+				D0FF2CD32AB7FA3A0024B5C3 /* Explosion.h */,
+				D0FF2CDA2AB7FA3A0024B5C3 /* ExplosionLine.cpp */,
+				D0FF2CB92AB7FA3A0024B5C3 /* ExplosionLine.h */,
+				D0FF2CCA2AB7FA3A0024B5C3 /* Fighter.cpp */,
+				D0FF2CAD2AB7FA3A0024B5C3 /* Fighter.h */,
+				D0FF2CD42AB7FA3A0024B5C3 /* FighterShip.cpp */,
+				D0FF2CA52AB7FA3A0024B5C3 /* FighterShip.h */,
+				D0FF2CAE2AB7FA3A0024B5C3 /* FollowEnemy.cpp */,
+				D0FF2C9D2AB7FA3A0024B5C3 /* FollowEnemy.h */,
+				D0FF2CDC2AB7FA3A0024B5C3 /* Game.cpp */,
+				D0FF2CBE2AB7FA3A0024B5C3 /* Game.h */,
+				D0FF2CC22AB7FA3A0024B5C3 /* GameController.cpp */,
+				D0FF2CD12AB7FA3A0024B5C3 /* GameController.h */,
+				D0FF2CAC2AB7FA3A0024B5C3 /* LeadEnemy.cpp */,
+				D0FF2CCC2AB7FA3A0024B5C3 /* LeadEnemy.h */,
+				D0FF2CBB2AB7FA3A0024B5C3 /* Letter.cpp */,
+				D0FF2CB52AB7FA3A0024B5C3 /* Letter.h */,
+				D0293A332AB9A4E600866D1E /* Logger.cpp */,
+				D0293A342AB9A4E600866D1E /* Logger.h */,
+				D0FF2CD72AB7FA3A0024B5C3 /* main.cpp */,
+				D0FF2CC32AB7FA3A0024B5C3 /* Mine.cpp */,
+				D0FF2CDE2AB7FA3A0024B5C3 /* Mine.h */,
+				D0FF2CDB2AB7FA3A0024B5C3 /* Number.cpp */,
+				D0FF2CCD2AB7FA3A0024B5C3 /* Number.h */,
+				D0FF2CA42AB7FA3A0024B5C3 /* Player.cpp */,
+				D0FF2CB62AB7FA3A0024B5C3 /* Player.h */,
+				D0FF2CB72AB7FA3A0024B5C3 /* PlayerExplosionLine.cpp */,
+				D0FF2CB22AB7FA3A0024B5C3 /* PlayerExplosionLine.h */,
+				D0FF2CDD2AB7FA3A0024B5C3 /* PlayerShip.cpp */,
+				D0FF2CC82AB7FA3A0024B5C3 /* PlayerShip.h */,
+				D0FF2CC12AB7FA3A0024B5C3 /* PlayerShot.cpp */,
+				D0FF2CB82AB7FA3A0024B5C3 /* PlayerShot.h */,
+				D0FF2CC72AB7FA3A0024B5C3 /* Rock.cpp */,
+				D0FF2CA82AB7FA3A0024B5C3 /* Rock.h */,
+				D0FF2CD92AB7FA3A0024B5C3 /* Ship.cpp */,
+				D0FF2C9F2AB7FA3A0024B5C3 /* Ship.h */,
+				D0FF2CBC2AB7FA3A0024B5C3 /* Shot.cpp */,
+				D0FF2CD22AB7FA3A0024B5C3 /* Shot.h */,
+				D0FF2CB12AB7FA3A0024B5C3 /* StatusDisplay.cpp */,
+				D0FF2CCB2AB7FA3A0024B5C3 /* StatusDisplay.h */,
+				D0FF2CB02AB7FA3A0024B5C3 /* Timer.cpp */,
+				D0FF2CBD2AB7FA3A0024B5C3 /* Timer.h */,
+				D0FF2CA32AB7FA3A0024B5C3 /* TriShip.cpp */,
+				D0FF2CBF2AB7FA3A0024B5C3 /* TriShip.h */,
+				D0FF2CBA2AB7FA3A0024B5C3 /* UFO.cpp */,
+				D0FF2CB32AB7FA3A0024B5C3 /* UFO.h */,
+				D08A402F2E610237007AF81D /* VapourTrail.cpp */,
+				D08A402E2E610237007AF81D /* VapourTrail.h */,
+				D0FF2CD02AB7FA3A0024B5C3 /* vmath.cpp */,
+				D0FF2CDF2AB7FA3A0024B5C3 /* vmath.h */,
+				D09731422E607EF500E48F4A /* Window.cpp */,
+				D09731412E607EF500E48F4A /* Window.h */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		D0FF2D062AB7FA6F0024B5C3 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				D0FF2D0A2AB7FA6F0024B5C3 /* Bonus.wav */,
+				D0FF2D102AB7FA6F0024B5C3 /* BorderHit.wav */,
+				D0FF2D0F2AB7FA6F0024B5C3 /* EnemyHit.wav */,
+				D0FF2D0D2AB7FA6F0024B5C3 /* FighterHit.wav */,
+				D0FF2D0C2AB7FA6F0024B5C3 /* FollowerHit.wav */,
+				D0FF2D092AB7FA6F0024B5C3 /* LeadEnemyHit.wav */,
+				D01EF0E22AB9AB2C00641E98 /* Master.bank */,
+				D01EF0E32AB9AB2C00641E98 /* Master.strings.bank */,
+				D0FF2D0E2AB7FA6F0024B5C3 /* MineHit.wav */,
+				D0FF2D072AB7FA6F0024B5C3 /* PlayerHit.wav */,
+				D0FF2D082AB7FA6F0024B5C3 /* PlayerShot.wav */,
+				D0FF2D0B2AB7FA6F0024B5C3 /* Thrust.wav */,
+				D0B059E92E61A36600D159DC /* icon.png */,
+				D0B059EA2E61A36600D159DC /* icon_1024.png */,
+				D0B059E72E61A35900D159DC /* shaders */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C923A7572045D22F008E51CD /* OmegaRace */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C923A76C2045D22F008E51CD /* Build configuration list for PBXNativeTarget "OmegaRace" */;
+			buildPhases = (
+				C923A7542045D22F008E51CD /* Sources */,
+				C923A7552045D22F008E51CD /* Frameworks */,
+				C923A7562045D22F008E51CD /* Resources */,
+				C979C33C204871C0001D8695 /* Copy Bundle Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OmegaRace;
+			productName = OmegaRace;
+			productReference = C923A7582045D22F008E51CD /* OmegaRace.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C923A7502045D22F008E51CD /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				ORGANIZATIONNAME = CompiledCreations;
+				TargetAttributes = {
+					C923A7572045D22F008E51CD = {
+						CreatedOnToolsVersion = 9.2;
+					};
+				};
+			};
+			buildConfigurationList = C923A7532045D22F008E51CD /* Build configuration list for PBXProject "OmegaRace" */;
+			compatibilityVersion = "Xcode 8.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = C923A74F2045D22F008E51CD;
+			productRefGroup = C923A7592045D22F008E51CD /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C923A7572045D22F008E51CD /* OmegaRace */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C923A7562045D22F008E51CD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D0FF2D152AB7FA6F0024B5C3 /* Thrust.wav in Resources */,
+				D0FF2D142AB7FA6F0024B5C3 /* Bonus.wav in Resources */,
+				D0FF2D162AB7FA6F0024B5C3 /* FollowerHit.wav in Resources */,
+				D0FF2D192AB7FA6F0024B5C3 /* EnemyHit.wav in Resources */,
+				D0FF2D112AB7FA6F0024B5C3 /* PlayerHit.wav in Resources */,
+				D0FF2D122AB7FA6F0024B5C3 /* PlayerShot.wav in Resources */,
+				D0FF2D172AB7FA6F0024B5C3 /* FighterHit.wav in Resources */,
+				D0FF2D1A2AB7FA6F0024B5C3 /* BorderHit.wav in Resources */,
+				C923A7622045D22F008E51CD /* Assets.xcassets in Resources */,
+				D0B059EB2E61A36600D159DC /* icon.png in Resources */,
+				D0B059EC2E61A36600D159DC /* icon_1024.png in Resources */,
+				D01EF0E52AB9ABB600641E98 /* Master.strings.bank in Resources */,
+				D01EF0E42AB9ABB400641E98 /* Master.bank in Resources */,
+				D0FF2D132AB7FA6F0024B5C3 /* LeadEnemyHit.wav in Resources */,
+				D0B059E82E61A35900D159DC /* bloom.fs in Resources */,
+				D0FF2D182AB7FA6F0024B5C3 /* MineHit.wav in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C923A7542045D22F008E51CD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D0FF2CEC2AB7FA3A0024B5C3 /* PlayerExplosionLine.cpp in Sources */,
+				D0FF2CE12AB7FA3A0024B5C3 /* Common.cpp in Sources */,
+				D0FF2CE02AB7FA3A0024B5C3 /* EnemyController.cpp in Sources */,
+				D0FF2CF42AB7FA3A0024B5C3 /* Fighter.cpp in Sources */,
+				D0FF2CFF2AB7FA3A0024B5C3 /* Number.cpp in Sources */,
+				D0FF2CE62AB7FA3A0024B5C3 /* Entity.cpp in Sources */,
+				D08A40312E615E00007AF81D /* Rock.cpp in Sources */,
+				D0FF2CE92AB7FA3A0024B5C3 /* FollowEnemy.cpp in Sources */,
+				D0FF2CEA2AB7FA3A0024B5C3 /* Timer.cpp in Sources */,
+				D0FF2CFD2AB7FA3A0024B5C3 /* Ship.cpp in Sources */,
+				D0FF2D012AB7FA3A0024B5C3 /* PlayerShip.cpp in Sources */,
+				D0FF2CEF2AB7FA3A0024B5C3 /* Shot.cpp in Sources */,
+				D0FF2CF72AB7FA3A0024B5C3 /* vmath.cpp in Sources */,
+				D0FF2CE82AB7FA3A0024B5C3 /* LeadEnemy.cpp in Sources */,
+				D0FF2CF02AB7FA3A0024B5C3 /* PlayerShot.cpp in Sources */,
+				D0FF2D002AB7FA3A0024B5C3 /* Game.cpp in Sources */,
+				D0FF2CF22AB7FA3A0024B5C3 /* Mine.cpp in Sources */,
+				D0FF2CE22AB7FA3A0024B5C3 /* Borders.cpp in Sources */,
+				D0FF2CEB2AB7FA3A0024B5C3 /* StatusDisplay.cpp in Sources */,
+				D0FF2CFB2AB7FA3A0024B5C3 /* main.cpp in Sources */,
+				D0FF2CF62AB7FA3A0024B5C3 /* Enemy.cpp in Sources */,
+				D0FF2CFE2AB7FA3A0024B5C3 /* ExplosionLine.cpp in Sources */,
+				D09731432E607EF500E48F4A /* Window.cpp in Sources */,
+				D0FF2CF12AB7FA3A0024B5C3 /* GameController.cpp in Sources */,
+				D0FF2CE32AB7FA3A0024B5C3 /* TriShip.cpp in Sources */,
+				D0FF2CE42AB7FA3A0024B5C3 /* Player.cpp in Sources */,
+				D08A40302E610237007AF81D /* VapourTrail.cpp in Sources */,
+				D0FF2CF52AB7FA3A0024B5C3 /* DoubleMine.cpp in Sources */,
+				D0293A352AB9A4E600866D1E /* Logger.cpp in Sources */,
+				D0FF2CE52AB7FA3A0024B5C3 /* Explosion.cpp in Sources */,
+				D0FF2CEE2AB7FA3A0024B5C3 /* Letter.cpp in Sources */,
+				D0FF2CF82AB7FA3A0024B5C3 /* FighterShip.cpp in Sources */,
+				D0293A302AB9A44400866D1E /* AudioEngine.cpp in Sources */,
+				D0FF2CB42AB7FA3A0024B5C3 /* UFO.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		C923A76A2045D22F008E51CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"VMATH_NAMESPACE=omegarace",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/../../ThirdParty/fmod/osx/inc\"",
+					/opt/homebrew/opt/raylib/include/,
+				);
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../ThirdParty/fmod/osx/lib\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SYSTEM_HEADER_SEARCH_PATHS = "";
+				VALID_ARCHS = arm64;
+			};
+			name = Debug;
+		};
+		C923A76B2045D22F008E51CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = "VMATH_NAMESPACE=omegarace";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/../../ThirdParty/fmod/osx/inc\"",
+					/opt/homebrew/opt/raylib/include/,
+				);
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../ThirdParty/fmod/osx/lib\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				SYSTEM_HEADER_SEARCH_PATHS = "";
+				VALID_ARCHS = arm64;
+			};
+			name = Release;
+		};
+		C923A76D2045D22F008E51CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = OmegaRace/OmegaRace.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = ASB8U9Q83W;
+				INFOPLIST_FILE = OmegaRace/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Omega Race";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.arcade-games";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/homebrew/Cellar/raylib/5.5/lib,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.onereddog.OmegaRace;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				VALID_ARCHS = arm64;
+			};
+			name = Debug;
+		};
+		C923A76E2045D22F008E51CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = OmegaRace/OmegaRace.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = ASB8U9Q83W;
+				GCC_OPTIMIZATION_LEVEL = fast;
+				INFOPLIST_FILE = OmegaRace/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Omega Race";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.arcade-games";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/homebrew/Cellar/raylib/5.5/lib,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = au.com.onereddog.OmegaRace;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				VALID_ARCHS = arm64;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C923A7532045D22F008E51CD /* Build configuration list for PBXProject "OmegaRace" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C923A76A2045D22F008E51CD /* Debug */,
+				C923A76B2045D22F008E51CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C923A76C2045D22F008E51CD /* Build configuration list for PBXNativeTarget "OmegaRace" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C923A76D2045D22F008E51CD /* Debug */,
+				C923A76E2045D22F008E51CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C923A7502045D22F008E51CD /* Project object */;
+}
