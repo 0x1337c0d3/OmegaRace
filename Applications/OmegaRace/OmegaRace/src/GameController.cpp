@@ -119,6 +119,7 @@ void GameController::update(double Frame) {
 
     if (m_EndOfWave) {
         if (!pTheEnemyController->checkExploding()) {
+            completeWaveCleanup(); // NEW: Clean up all remaining entities
             spawnNewWave(pTheEnemyController->newWave());
             m_EndOfWave = false;
         }
@@ -979,6 +980,32 @@ void GameController::onScreenSizeChanged() {
     // Update inside border for player and enemies
     pThePlayer->setInsideBorder(pTheBorders->getInsideBorder());
     pTheEnemyController->setInisdeBorder(pTheBorders->getInsideBorder());
+}
+
+void GameController::completeWaveCleanup() {
+    // Destroy all remaining active rocks with spectacular dust explosions
+    for (size_t i = 0; i < m_Rocks.size(); i++) {
+        if (m_Rocks[i] && !m_Rocks[i]->isDestroyed()) {
+            m_Rocks[i]->setDestroyed(true);
+            m_Rocks[i]->triggerDustExplosion();
+            
+            // Award small bonus points for automatic rock destruction
+            m_Score += 100;
+        }
+    }
+    
+    // Destroy UFO if active with explosion
+    if (m_UFO && m_UFO->isActive() && !m_UFO->isDestroyed()) {
+        m_UFO->setDestroyed(true);
+        m_UFO->setActive(false);
+        m_UFO->triggerExplosion();
+        
+        // Award bonus points for automatic UFO destruction
+        m_Score += 500;
+    }
+    
+    // Update status display to show new score
+    pStatus->setScore(m_Score);
 }
 
 } // namespace omegarace
