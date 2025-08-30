@@ -89,26 +89,6 @@ void Game::onRender() {
     // Display FPS counter in top-left corner
     Window::DrawFPS(10, 10);
     
-    // Display PS4/PS5 controller status
-    if (Window::IsControllerConnected()) {
-        std::string controllerInfo = "Controller: " + Window::GetControllerName();
-        ::DrawText(controllerInfo.c_str(), 10, 30, 16, (::Color){0, 228, 48, 255}); // Green
-        
-        // Show if it's a PS4 or PS5 controller specifically
-        std::string name = Window::GetControllerName();
-        if (name.find("PS4") != std::string::npos ||
-            name.find("DualShock") != std::string::npos) {
-            ::DrawText("PS4 DualShock Ready!", 10, 50, 16, (::Color){253, 249, 0, 255}); // Yellow
-        } else if (name.find("DualSense") != std::string::npos) {
-            ::DrawText("PS5 DualSense Ready!", 10, 50, 16, (::Color){0, 162, 232, 255}); // PS5 Blue
-        } else if (name.find("Sony") != std::string::npos ||
-                   name.find("Wireless Controller") != std::string::npos) {
-            ::DrawText("PlayStation Controller Ready!", 10, 50, 16, (::Color){253, 249, 0, 255}); // Yellow
-        }
-    } else {
-        ::DrawText("No Controller Connected", 10, 30, 16, (::Color){230, 41, 55, 255}); // Red
-    }
-    
     // Note: Window::Present() is not needed - EndDrawing() handles this
 }
 

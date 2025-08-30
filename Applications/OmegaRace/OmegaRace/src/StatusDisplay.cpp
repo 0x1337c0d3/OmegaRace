@@ -11,7 +11,7 @@ StatusDisplay::StatusDisplay() {
 
     m_GameText[0] = "OMEGA RACE";
     m_GameText[1] = "GAME OVER";
-    m_GameText[2] = "N KEY TO START OR RESTART GAME";
+    m_GameText[2] = "N OR START BUTTON TO START OR RESTART GAME";
     m_GameText[3] = "ARROW KEYS TO CONTROL SHIP UP FOR THRUST";
     m_GameText[4] = "LEFT CTRL KEY OR SPACE TO FIRE";
     m_GameText[5] = "HIGH SCORE HEROES";

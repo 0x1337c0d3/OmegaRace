@@ -21,23 +21,24 @@ int Window::mWindowedHeight = 600;
 void Window::updateControllerDetection() {
     // Check if current controller is still connected
     if (mControllerIndex >= 0 && !IsGamepadAvailable(mControllerIndex)) {
+        printf("Controller at index %d disconnected\n", mControllerIndex);
         mControllerIndex = -1;
     }
     
-    // Periodically check for controller connections
-    // Only check if no controller is currently detected
-    if (mControllerIndex == -1) {
-        static int lastCheckFrame = 0;
-        static int currentFrame = 0;
-        currentFrame++;
-        
-        // Check every 60 frames (approximately once per second at 60 FPS)
-        if (currentFrame - lastCheckFrame >= 60) {
-            lastCheckFrame = currentFrame;
-            int newController = findController();
-            if (newController != -1) {
-                mControllerIndex = newController;
-            }
+    // Always check for controller connections (not just when no controller is detected)
+    // This handles cases where a controller was connected but not detected, or
+    // when switching between multiple controllers
+    static int lastCheckFrame = 0;
+    static int currentFrame = 0;
+    currentFrame++;
+    
+    // Check every 30 frames (approximately twice per second at 60 FPS) - more frequent
+    if (currentFrame - lastCheckFrame >= 30) {
+        lastCheckFrame = currentFrame;
+        int newController = findController();
+        if (newController != -1 && newController != mControllerIndex) {
+            printf("Switching to controller at index %d\n", newController);
+            mControllerIndex = newController;
         }
     }
 }
@@ -227,24 +228,55 @@ int Window::findController() {
             // - "Wireless Controller" (most common)
             // - "Sony Interactive Entertainment DualSense Wireless Controller"
             // - "DualSense Wireless Controller" (macOS/Windows)
+            //
+            // Recent macOS versions might report:
+            // - "Sony DualShock 4" 
+            // - "Sony DualSense"
+            // - "Controller (Wireless Controller)"
+            // - "Controller (DUALSHOCK 4 Wireless Controller)"
             
             if (gamepadName) {
                 std::string name = gamepadName;
                 // Convert to lowercase for case-insensitive matching
                 std::transform(name.begin(), name.end(), name.begin(), ::tolower);
                 
+                bool isPlayStationController = false;
+                std::string controllerType = "Generic";
+                
+                // Check for PlayStation controller patterns
                 if (name.find("ps4") != std::string::npos ||
                     name.find("dualshock") != std::string::npos ||
-                    name.find("sony") != std::string::npos ||
-                    name.find("wireless controller") != std::string::npos ||
-                    name.find("dualsense") != std::string::npos) {
-                    printf("PlayStation Controller detected at index %d: %s\n", i, gamepadName);
+                    name.find("dualshock 4") != std::string::npos) {
+                    isPlayStationController = true;
+                    controllerType = "PS4 DualShock 4";
+                } else if (name.find("dualsense") != std::string::npos) {
+                    isPlayStationController = true;
+                    controllerType = "PS5 DualSense";
+                } else if (name.find("sony") != std::string::npos) {
+                    isPlayStationController = true;
+                    controllerType = "Sony Controller";
+                } else if (name.find("wireless controller") != std::string::npos) {
+                    // This could be either PS4 or PS5, but we'll accept it
+                    isPlayStationController = true;
+                    controllerType = "PlayStation Wireless Controller";
+                } else if (name.find("controller") != std::string::npos && 
+                          (name.find("(wireless") != std::string::npos || 
+                           name.find("(dualshock") != std::string::npos)) {
+                    // Handle cases like "Controller (Wireless Controller)"
+                    isPlayStationController = true;
+                    controllerType = "PlayStation Controller";
+                }
+                
+                if (isPlayStationController) {
+                    printf("%s detected at index %d: %s\n", controllerType.c_str(), i, gamepadName);
                 } else {
                     printf("Generic controller detected at index %d: %s\n", i, gamepadName);
                 }
+            } else {
+                printf("Unnamed controller detected at index %d\n", i);
             }
             
-            return i;  // Return first available gamepad
+            return i;  // Return first available gamepad (prioritizes PlayStation controllers due to order)
         }
     }
     printf("No controllers detected\n");

@@ -219,41 +219,6 @@ void GameController::newGame() {
 }
 
 void GameController::handleInput() {
-    /*
-     * PS4/PS5 CONTROLLER MAPPING FOR OMEGARACE
-     * ========================================
-     * 
-     * Compatible with both PS4 DualShock 4 and PS5 DualSense controllers!
-     * All button mappings are identical between PS4 and PS5.
-     * 
-     * TURNING CONTROLS:
-     * - Left Analog Stick (horizontal) - Smooth turning (preferred)
-     * - D-pad Left/Right - Precise turning
-     * - L1/R1 Shoulder Buttons - L1 unused, R1 for thrust
-     * 
-     * THRUST CONTROLS:
-     * - X Button (bottom face) - Primary thrust
-     * - Right Analog Stick (up) - Analog thrust
-     * - R2 Trigger - Analog thrust (pressure sensitive on PS5!)
-     * 
-     * FIRE CONTROLS:
-     * - Square Button - Primary fire
-     * - Circle Button - Alternative fire
-     * - L2 Trigger - Rapid fire (adaptive trigger feedback on PS5!)
-     * 
-     * GAME CONTROLS:
-     * - Options Button - New Game
-     * - Create/Share Button - Reserved for pause
-     * - Triangle Button - Reserved for future features
-     * 
-     * PS5 ENHANCEMENTS:
-     * - Adaptive Triggers: L2/R2 provide resistance feedback
-     * - Haptic Feedback: Enhanced vibration for collisions
-     * - Motion Controls: Gyroscope available for future use
-     * 
-     * All controls work simultaneously with keyboard controls
-     */
-    
     // Combined keyboard and controller input handling
     // Start with keyboard states
     bool turnLeft = false;
@@ -322,13 +287,7 @@ void GameController::handleInput() {
         if (rightStickY < -STICK_DEADZONE) {  // Up on right stick
             thrust = true;  // Add to keyboard input
         }
-        
-        // Method 3: R2 trigger (analog trigger) - ALTERNATIVE
-        float rightTrigger = GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_RIGHT_TRIGGER);
-        if (rightTrigger > 0.1f) {  // R2 trigger pressed
-            thrust = true;  // Add to keyboard input
-        }
-        
+                
         // === FIRE CONTROLS ===
         // Method 1: X button (PS4 X = bottom face button) - PRIMARY
         if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {  // X button
@@ -341,16 +300,10 @@ void GameController::handleInput() {
         }
         
         // Method 3: Circle button (PS4 Circle = right face button)  
-        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {  // Circle
-            pThePlayer->fireButtonPressed();
+        if (IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {  // Circle
+            thrust = true;  // Add to keyboard input
         }
-        
-        // Method 4: L2 trigger for rapid fire
-        float leftTrigger = GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_LEFT_TRIGGER);
-        if (leftTrigger > 0.5f) {  // L2 trigger for continuous fire
-            pThePlayer->fireButtonPressed();
-        }
-        
+                
         // === GAME CONTROLS ===
         // Start button (Options) for new game
         if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {  // Options/Start

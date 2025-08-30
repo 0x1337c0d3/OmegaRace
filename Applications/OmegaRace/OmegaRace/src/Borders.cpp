@@ -152,7 +152,6 @@ void Borders::drawElectricShimmerLine(Line* line, double endTime) {
     double currentTime = pTimer->seconds();
     double timeRemaining = endTime - currentTime;
     double totalDuration = 0.5; // Total effect duration
-    double normalizedTime = 1.0 - (timeRemaining / totalDuration);
     
     // Create pulsing intensity based on sine wave
     double pulseSpeed = 15.0; // How fast the pulse oscillates
@@ -187,7 +186,6 @@ void Borders::drawElectricShimmerLine(Line* line, double endTime) {
 void Borders::drawElectricArcs(Line* mainLine, const Color& arcColor) {
     // Calculate line properties
     Vector2i lineVec = mainLine->end - mainLine->start;
-    float lineLength = sqrt((float)(lineVec.x * lineVec.x + lineVec.y * lineVec.y));
     
     // Create 2-4 random arcs along the line
     int numArcs = Window::Random(2, 4);
