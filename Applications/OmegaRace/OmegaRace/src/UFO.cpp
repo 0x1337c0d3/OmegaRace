@@ -288,4 +288,16 @@ void UFO::drawExplosion() {
     }
 }
 
+void UFO::forceResetExplosion() {
+    // Immediately reset explosion state
+    explosionActive = false;
+    explosionTimer = 0.0f;
+    
+    // Deactivate all explosion particles
+    for (int i = 0; i < 24; i++) {
+        explosionParticles[i].active = false;
+        explosionParticles[i].life = 0.0f;
+    }
+}
+
 } // namespace omegarace

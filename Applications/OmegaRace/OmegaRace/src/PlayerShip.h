@@ -27,6 +27,7 @@ class PlayerShip {
     
     // Vapour trail control
     void setVapourTrailActive(bool active);
+    void clearVaporTrail(); // NEW: Clear vapor trail
     
     // Position offset methods for shots and vapour trail
     Vector2f getNosePosition(float rotation, const Vector2f& centerLocation, float scale);

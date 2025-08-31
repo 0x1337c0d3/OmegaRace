@@ -57,6 +57,7 @@ class Rock : public Entity {
     void triggerDustExplosion();
     void updateDustExplosion(double frame);
     void drawDustExplosion();
+    void forceResetDustExplosion(); // NEW: Force immediate dust explosion reset
     void checkForEdge();
     bool isDestroyed() const { return m_Distroyed; }
     void setDestroyed(bool d);

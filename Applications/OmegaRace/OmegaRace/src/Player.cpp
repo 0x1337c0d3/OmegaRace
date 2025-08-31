@@ -404,4 +404,10 @@ void Player::timerUnpause() {
     }
 }
 
+void Player::clearVaporTrail() {
+    if (pShip) {
+        pShip->clearVaporTrail();
+    }
+}
+
 } // namespace omegarace

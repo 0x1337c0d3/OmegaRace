@@ -37,6 +37,7 @@ class Player : public Entity {
     bool getExplosionOn();
     bool getInsideLineHit(int line);
     bool getOutsideLineHit(int line);
+    void clearVaporTrail(); // NEW: Clear player vapor trail
     
     // Get offset position for firing shots from nose
     Vector2f getNosePosition();

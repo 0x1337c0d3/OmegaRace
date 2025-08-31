@@ -34,6 +34,7 @@ class GameController : Common {
     bool playerHit();
     void triggerWarpTransition(float duration = 2.0f); // NEW: Warp effect trigger
     void completeWaveCleanup(); // NEW: Destroy all remaining rocks and UFOs when wave ends
+    void resetAllEntityStates(); // NEW: Reset all entity states to prevent carryover
     
     // Rock system methods
     void spawnRocks(int waveNumber);

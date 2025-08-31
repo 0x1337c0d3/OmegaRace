@@ -367,4 +367,16 @@ void Rock::checkForEdge() {
     }
 }
 
+void Rock::forceResetDustExplosion() {
+    // Immediately reset dust explosion state
+    m_DustActive = false;
+    m_DustTimer = 0.0f;
+    
+    // Deactivate all dust particles
+    for (int i = 0; i < 12; i++) {
+        m_DustParticles[i].active = false;
+        m_DustParticles[i].life = 0.0f;
+    }
+}
+
 } // namespace omegarace

@@ -131,4 +131,11 @@ void Enemy::setSpeed(float speed) {
     m_MoveSpeed = speed;
 }
 
+void Enemy::clearVaporTrail() {
+    if (pShip) {
+        pShip->setVapourTrailActive(false); // This will clear the trail
+        pShip->setVapourTrailActive(true);  // Reactivate for future use
+    }
+}
+
 } // namespace omegarace

@@ -81,4 +81,14 @@ void LeadEnemy::resetShotTimer() {
     m_FireTimer = m_FireTimerAmount + pTimer->seconds() + Window::Random(0, (int)(m_FireTimerAmount * 10) * 0.1);
 }
 
+void LeadEnemy::clearVaporTrail() {
+    // Clear Enemy base class vapor trail
+    Enemy::clearVaporTrail();
+    
+    // Clear TriShip vapor trail
+    if (pTriShip) {
+        pTriShip->clearVaporTrail();
+    }
+}
+
 } // namespace omegarace

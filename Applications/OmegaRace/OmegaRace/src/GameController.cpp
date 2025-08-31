@@ -16,7 +16,7 @@ GameController::GameController() {
     pStatus = std::make_unique<StatusDisplay>();
     
     m_Score = 0;
-    m_PlayerShips = 0;
+    m_PlayerShips = 4; // Start with 4 extra lives (5 total including current life)
     m_EndOfWave = false;
     m_State = -1;
     m_CurrentWave = 1; // Initialize wave counter
@@ -174,7 +174,10 @@ void GameController::draw() {
     
     pTheBorders->drawBackground(distortionSources);
     
-    pThePlayer->draw();
+    // Only draw player if warp transition is not active
+    if (!m_WarpActive) {
+        pThePlayer->draw();
+    }
     pTheEnemyController->draw();
     drawRocks(); // Draw rocks
     drawUFO(); // Draw UFO
@@ -223,6 +226,9 @@ void GameController::newGame() {
     }
     m_UFOSpawnTimer = 0.0f;
     m_UFOSpawnInterval = 15.0f;
+    
+    // Reset all entity states to ensure clean start
+    resetAllEntityStates();
     
     pThePlayer->newGame();
     pStatus->newGame();
@@ -1016,8 +1022,71 @@ void GameController::completeWaveCleanup() {
         m_Score += 500;
     }
     
+    // Clear all lingering entity states
+    resetAllEntityStates();
+    
     // Update status display to show new score
     pStatus->setScore(m_Score);
+}
+
+void GameController::resetAllEntityStates() {
+    // Reset player shots - deactivate any active bullets
+    for (int shot = 0; shot < pThePlayer->getNumberOfShots(); shot++) {
+        if (pThePlayer->getShotActive(shot)) {
+            pThePlayer->setShotActive(shot, false);
+        }
+    }
+    
+    // Clear player vapor trail
+    pThePlayer->clearVaporTrail();
+    
+    // Reset LeadEnemy states
+    if (pLeader) {
+        // Deactivate LeadEnemy shot if active
+        if (pLeader->getShotActive()) {
+            pLeader->shotHitTarget(); // This deactivates the shot
+        }
+    }
+    
+    // Reset Fighter states  
+    if (pFighter) {
+        // Deactivate Fighter shot if active
+        if (pFighter->getShotActive()) {
+            pFighter->shotHitTarget(); // This deactivates the shot
+        }
+        
+        // Clear Fighter mines
+        for (int mine = 0; mine < pFighter->getMineCount(); mine++) {
+            if (pFighter->getMineActive(mine)) {
+                pFighter->mineHit(mine); // This deactivates the mine
+            }
+        }
+    }
+    
+    // Reset FollowEnemy states
+    if (pFollower) {
+        // Clear FollowEnemy mines
+        for (int mine = 0; mine < pFollower->getMineCount(); mine++) {
+            if (pFollower->getMineActive(mine)) {
+                pFollower->mineHit(mine); // This deactivates the mine
+            }
+        }
+    }
+    
+    // Clear all enemy vapor trails (includes all enemy ships)
+    pTheEnemyController->clearAllVaporTrails();
+    
+    // Force reset UFO explosion states immediately (don't wait for natural fade)
+    if (m_UFO) {
+        m_UFO->forceResetExplosion();
+    }
+    
+    // Reset all rock dust explosions immediately
+    for (size_t i = 0; i < m_Rocks.size(); i++) {
+        if (m_Rocks[i]) {
+            m_Rocks[i]->forceResetDustExplosion();
+        }
+    }
 }
 
 } // namespace omegarace

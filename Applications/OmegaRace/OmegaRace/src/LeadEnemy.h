@@ -22,6 +22,7 @@ class LeadEnemy : public Enemy {
     bool getShotActive();
     void timerPause();
     void timerUnpause();
+    void clearVaporTrail(); // NEW: Clear vapor trail
 
   private:
     void fireShot();

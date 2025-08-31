@@ -36,6 +36,7 @@ class Fighter : public Entity {
     void timerUnpause();
     void explode();
     bool getExplosionActive();
+    void clearVaporTrail(); // NEW: Clear vapor trail
 
   private:
     void resetMineTimer();

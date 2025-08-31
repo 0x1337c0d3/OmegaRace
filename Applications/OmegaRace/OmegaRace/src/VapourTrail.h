@@ -21,6 +21,9 @@ class VapourTrail {
     void setUpdateFrequency(int frequency);     // How often to add points (default 2)
     void setMaxThickness(float thickness);      // Maximum trail thickness (default 2.0f)
     void setMinThickness(float thickness);      // Minimum trail thickness (default 0.5f)
+    
+    // Public method to clear trail for state reset
+    void clearTrail();
 
   private:
     bool m_Active;
@@ -35,8 +38,6 @@ class VapourTrail {
     Vector2f* m_TrailPoints;
     float* m_TrailAlpha;
     Color m_TrailColor;
-    
-    void clearTrail();
 };
 
 } // namespace omegarace

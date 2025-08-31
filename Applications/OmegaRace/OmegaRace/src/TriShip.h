@@ -21,6 +21,7 @@ class TriShip {
     void setThreatLevel(float level); // 0.0 to 1.0 - affects menacing appearance
     void setAggressiveMode(bool aggressive);
     void setMode(TriShipMode mode);   // Set visual mode (enemy, mine, double mine)
+    void clearVaporTrail(); // NEW: Clear vapor trail
 
   private:
     void initilize();

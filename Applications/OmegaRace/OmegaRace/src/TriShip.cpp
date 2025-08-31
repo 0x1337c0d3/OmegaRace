@@ -327,4 +327,8 @@ void TriShip::drawDoubleMineEffects() {
     }
 }
 
+void TriShip::clearVaporTrail() {
+    m_VapourTrail.clearTrail();
+}
+
 } // namespace omegarace

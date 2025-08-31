@@ -32,6 +32,7 @@ class EnemyController : public Common {
     void timerPause();
     void timerUnpause();
     void setPlayerPosition(const Vector2f& playerPos);
+    void clearAllVaporTrails(); // NEW: Clear all enemy vapor trails
     bool checkEndOfWave();
     bool getEnemyCircle(const Vector2f& location, float radius, int ship);
     bool getEnemyActive(int ship);

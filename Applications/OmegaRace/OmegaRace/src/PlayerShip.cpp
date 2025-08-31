@@ -357,6 +357,12 @@ void PlayerShip::setVapourTrailActive(bool active) {
     }
 }
 
+void PlayerShip::clearVaporTrail() {
+    if (m_VapourTrail) {
+        m_VapourTrail->clearTrail();
+    }
+}
+
 Vector2f PlayerShip::getNosePosition(float rotation, const Vector2f& centerLocation, float scale) {
     // Nose tip is at (5, 0) in ship coordinates
     float noseOffsetX = 5.0f * scale;

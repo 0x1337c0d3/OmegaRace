@@ -109,6 +109,16 @@ void FollowEnemy::timerUnpause() {
     pTimer->unpause();
 }
 
+void FollowEnemy::clearVaporTrail() {
+    // Clear Enemy base class vapor trail
+    Enemy::clearVaporTrail();
+    
+    // Clear TriShip vapor trail
+    if (pTriShip) {
+        pTriShip->clearVaporTrail();
+    }
+}
+
 void FollowEnemy::spawnMine() {
     float scale = 3.5;
     m_Mines.push_back(std::make_unique<Mine>());

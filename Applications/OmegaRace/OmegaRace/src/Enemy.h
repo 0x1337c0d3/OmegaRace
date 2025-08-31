@@ -29,6 +29,7 @@ class Enemy : public Entity {
     void explode();
     bool getExplosionActive();
     WhenToTurn getTurns();
+    void clearVaporTrail(); // NEW: Clear vapor trail
 
   private:
     std::unique_ptr<Ship> pShip;

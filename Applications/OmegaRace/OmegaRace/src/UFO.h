@@ -20,6 +20,7 @@ public:
     void triggerExplosion();
     void updateExplosion(double frame);
     void drawExplosion();
+    void forceResetExplosion(); // NEW: Force immediate explosion reset
     
     // State getters/setters
     bool isDestroyed() const { return destroyed; }

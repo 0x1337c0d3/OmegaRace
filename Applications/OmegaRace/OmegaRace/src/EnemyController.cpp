@@ -354,4 +354,29 @@ void EnemyController::setPlayerPosition(const Vector2f& playerPos) {
     }
 }
 
+void EnemyController::clearAllVaporTrails() {
+    // Clear all enemy ship vapor trails
+    for (int ship = 0; ship < m_EnemyShips.size(); ship++) {
+        if (m_EnemyShips[ship]) {
+            // Each Enemy has a Ship that has VapourTrail - clear it
+            m_EnemyShips[ship]->clearVaporTrail();
+        }
+    }
+    
+    // Clear LeadEnemy vapor trail
+    if (pLeadEnemyShip) {
+        pLeadEnemyShip->clearVaporTrail();
+    }
+    
+    // Clear FollowEnemy vapor trail (TriShip)
+    if (pFollowEnemyShip) {
+        pFollowEnemyShip->clearVaporTrail();
+    }
+    
+    // Clear Fighter vapor trail 
+    if (pFighter) {
+        pFighter->clearVaporTrail();
+    }
+}
+
 } // namespace omegarace

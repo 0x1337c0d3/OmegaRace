@@ -1,4 +1,5 @@
 #include "Window.h"
+#include <rlgl.h>  // For matrix operations
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -15,13 +16,16 @@ std::mt19937 m_Random;
 Rectangle Window::mBox;
 int Window::mControllerIndex = -1;
 bool Window::mIsFullscreen = false;
-int Window::mWindowedWidth = 800;
-int Window::mWindowedHeight = 600;
+int Window::mWindowedWidth = 1024;
+int Window::mWindowedHeight = 768;
+
+// Scaling for aspect ratio preservation
+float Window::mRenderScale = 1.0f;
+Vector2i Window::mRenderOffset = {0, 0};
 
 void Window::updateControllerDetection() {
     // Check if current controller is still connected
     if (mControllerIndex >= 0 && !IsGamepadAvailable(mControllerIndex)) {
-        printf("Controller at index %d disconnected\n", mControllerIndex);
         mControllerIndex = -1;
     }
     
@@ -37,7 +41,6 @@ void Window::updateControllerDetection() {
         lastCheckFrame = currentFrame;
         int newController = findController();
         if (newController != -1 && newController != mControllerIndex) {
-            printf("Switching to controller at index %d\n", newController);
             mControllerIndex = newController;
         }
     }
@@ -87,7 +90,7 @@ void Window::Init(int width, int height, std::string title) {
     mBox.y = 0;
     mBox.width = (float)width;
     mBox.height = (float)height;
-    
+        
     // Enable alpha blending for volumetric effects
     // Raylib handles this automatically
     
@@ -105,18 +108,14 @@ void Window::logRaylibError(std::ostream& os, const std::string& msg) {
     os << msg << " error: " << std::endl;
 }
 
-void Window::Clear() {
-    ClearBackground(::BLACK);  // BLACK is Raylib's color constant
-}
-
 void Window::Present() {
     // Raylib handles this automatically in EndDrawing()
     // This function is now essentially a no-op, but kept for compatibility
 }
 
 Rectangle Window::Box() {
-    mBox.width = (float)GetScreenWidth();
-    mBox.height = (float)GetScreenHeight();
+    mBox.width = (float)GAME_WIDTH;  // Always return logical game dimensions
+    mBox.height = (float)GAME_HEIGHT;
     return mBox;
 }
 
@@ -198,10 +197,7 @@ void Window::DrawRect(const Rectangle* RectangleLocation, const Color& Rectangle
 }
 
 Vector2i Window::GetWindowSize() {
-    Vector2i WindowSize;
-    WindowSize.x = GetScreenWidth();
-    WindowSize.y = GetScreenHeight();
-    return WindowSize;
+    return { GAME_WIDTH, GAME_HEIGHT }; // Always return logical game dimensions
 }
 
 int Window::Random(int Min, int Max) {
@@ -214,27 +210,7 @@ int Window::findController() {
     
     for (int i = 0; i < 16; i++) {  // Check up to 16 gamepads (increased from 4)
         if (IsGamepadAvailable(i)) {
-            const char* gamepadName = GetGamepadName(i);
-                        
-            // PS4 controller names can vary by platform and connection method:
-            // - "PS4 Controller" (macOS USB)
-            // - "Sony Computer Entertainment Wireless Controller" (macOS Bluetooth)
-            // - "Wireless Controller" (macOS/Linux Bluetooth)
-            // - "Sony Interactive Entertainment DualShock 4" (Windows)
-            // - "DualShock 4" (various)
-            // - "DUALSHOCK 4 Wireless Controller" (macOS)
-            // 
-            // PS5 controller names:
-            // - "Wireless Controller" (most common)
-            // - "Sony Interactive Entertainment DualSense Wireless Controller"
-            // - "DualSense Wireless Controller" (macOS/Windows)
-            //
-            // Recent macOS versions might report:
-            // - "Sony DualShock 4" 
-            // - "Sony DualSense"
-            // - "Controller (Wireless Controller)"
-            // - "Controller (DUALSHOCK 4 Wireless Controller)"
-            
+            const char* gamepadName = GetGamepadName(i);            
             if (gamepadName) {
                 std::string name = gamepadName;
                 // Convert to lowercase for case-insensitive matching
@@ -266,28 +242,42 @@ int Window::findController() {
                     isPlayStationController = true;
                     controllerType = "PlayStation Controller";
                 }
-                
-                if (isPlayStationController) {
-                    printf("%s detected at index %d: %s\n", controllerType.c_str(), i, gamepadName);
-                } else {
-                    printf("Generic controller detected at index %d: %s\n", i, gamepadName);
-                }
-            } else {
-                printf("Unnamed controller detected at index %d\n", i);
             }
             
             return i;  // Return first available gamepad (prioritizes PlayStation controllers due to order)
         }
     }
-    printf("No controllers detected\n");
     return -1;
 }
 
 void Window::BeginDrawing() {
     ::BeginDrawing();
-}
 
+    int screenWidth = GetScreenWidth();
+    int screenHeight = GetScreenHeight();
+    
+    // Calculate uniform scale to preserve aspect ratio
+    float scaleX = (float)screenWidth / GAME_WIDTH;
+    float scaleY = (float)screenHeight / GAME_HEIGHT;
+    mRenderScale = fmin(scaleX, scaleY);  // Use smaller scale to fit entirely
+    
+    // Calculate centering offset
+    float scaledWidth = GAME_WIDTH * mRenderScale;
+    float scaledHeight = GAME_HEIGHT * mRenderScale;
+    mRenderOffset.x = (int)((screenWidth - scaledWidth) / 2.0f);
+    mRenderOffset.y = (int)((screenHeight - scaledHeight) / 2.0f);
+
+    // Use a subtle dark gray for letterboxing instead of pure black
+    ClearBackground((::Color){20, 20, 24, 255});
+    
+    rlPushMatrix();
+    rlTranslatef((float)mRenderOffset.x, (float)mRenderOffset.y, 0.0f);
+    rlScalef(mRenderScale, mRenderScale, 1.0f);
+}
+ 
 void Window::EndDrawing() {
+    // Restore the transformation matrix
+    rlPopMatrix();
     ::EndDrawing();
 }
 
@@ -416,9 +406,8 @@ void Window::PrintFPS() {
 
 // Full screen warp effect for dramatic wave transitions
 void Window::DrawFullScreenWarp(float intensity, float time) {
-    int screenWidth = GetScreenWidth();
-    int screenHeight = GetScreenHeight();
-    ::Vector2 center = { (float)screenWidth / 2.0f, (float)screenHeight / 2.0f };
+    // Use logical game dimensions instead of physical screen dimensions
+    ::Vector2 center = { (float)GAME_WIDTH / 2.0f, (float)GAME_HEIGHT / 2.0f };
     
     // Create multiple concentric rings expanding outward
     for (int ring = 0; ring < 8; ring++) {
@@ -495,7 +484,7 @@ bool Window::CheckForFullscreenToggle() {
         // Update mBox dimensions to match new screen size
         mBox.width = (float)currentWidth;
         mBox.height = (float)currentHeight;
-        
+                
         return true;  // Screen size or state changed
     }
     

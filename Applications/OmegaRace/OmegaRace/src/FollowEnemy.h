@@ -23,6 +23,7 @@ class FollowEnemy : public Enemy {
     void timerPause();
     void timerUnpause();
     void setPlayerPosition(const Vector2f& playerPos);
+    void clearVaporTrail(); // NEW: Clear TriShip vapor trail
 
   private:
     std::unique_ptr<TriShip> pTriShip;

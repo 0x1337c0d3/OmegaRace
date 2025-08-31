@@ -281,4 +281,11 @@ void Fighter::checkBorders() {
     }
 }
 
+void Fighter::clearVaporTrail() {
+    // Clear TriShip vapor trail
+    if (pShip) {
+        pShip->clearVaporTrail();
+    }
+}
+
 } // namespace omegarace

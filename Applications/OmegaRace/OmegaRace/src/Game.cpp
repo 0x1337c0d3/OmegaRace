@@ -83,7 +83,6 @@ void Game::onUpdate() {
 }
 
 void Game::onRender() {
-    Window::Clear();
     pGameController->draw();
     
     // Display FPS counter in top-left corner
@@ -104,6 +103,11 @@ void Game::handleInput() {
             pTimer->unpause();
         else
             pTimer->pause();
+    }
+    
+    // Handle fullscreen toggle (F11 key)
+    if (IsKeyPressed(KEY_F11)) {
+        Window::ToggleFullscreen();
     }
     
     // Handle quit (Escape key)

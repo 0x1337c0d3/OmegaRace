@@ -48,7 +48,6 @@ class Window {
   public:
     static void Init(int width, int height, std::string title = "Raylib Window");
     static void Quit();
-    static void Clear();
     static void Present();  // Kept for compatibility, but largely unused in Raylib
     static Rectangle Box();
     static void logRaylibError(std::ostream& os, const std::string& msg);
@@ -110,6 +109,12 @@ class Window {
     static bool mIsFullscreen;  // Track fullscreen state
     static int mWindowedWidth;  // Store windowed dimensions
     static int mWindowedHeight;
+    
+    // Scaling for aspect ratio preservation
+    static float mRenderScale;
+    static Vector2i mRenderOffset;
+    static constexpr int GAME_WIDTH = 1024;
+    static constexpr int GAME_HEIGHT = 768;
     // Note: No need for window/renderer pointers - Raylib manages these internally
 };
 

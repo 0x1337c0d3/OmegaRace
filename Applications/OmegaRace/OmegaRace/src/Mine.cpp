@@ -5,7 +5,7 @@ namespace omegarace {
 Mine::Mine() {
     pMine = std::make_unique<TriShip>();
     pMine->setMode(TriShipMode::MINE);  // Set to dangerous mine appearance
-    m_Radius = 6;  // Increased hit detection radius for easier shooting
+    m_Radius = 10;  // Increased hit detection radius for easier shooting (was 6)
     m_Scale = 4;
 }
 
