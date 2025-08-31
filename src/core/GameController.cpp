@@ -190,12 +190,14 @@ void GameController::draw() {
         float warpProgress = elapsedTime / m_WarpDuration;
         
         if (warpProgress <= 1.0f) {
-            // Create an intensity curve that starts high, peaks in middle, then fades
+            // Create an intensity curve that's more visible throughout the transition
             float intensity;
             if (warpProgress < 0.5f) {
-                intensity = warpProgress * 2.0f; // Ramp up
+                // Start at 0.5 minimum, peak at 1.0 at midpoint
+                intensity = 0.5f + (warpProgress * 1.0f); // Ramp from 0.5 to 1.0
             } else {
-                intensity = (1.0f - warpProgress) * 2.0f; // Ramp down
+                // Ramp down from 1.0 to 0.5, not to 0
+                intensity = 0.5f + ((1.0f - warpProgress) * 1.0f); // Ramp from 1.0 to 0.5
             }
             
             Window::BeginWarpTransition();
@@ -247,6 +249,20 @@ void GameController::handleInput() {
     bool turnRight = false;
     bool thrust = false;
     
+    // New game controls work even during warp transition
+    if (IsKeyPressed(KEY_N)) {
+        newGame();
+    }
+    
+    // Block player movement and firing during warp transition
+    if (m_WarpActive) {
+        // Apply disabled input states during warp
+        pThePlayer->setTurnLeft(false);
+        pThePlayer->setTurnRight(false);
+        pThePlayer->setThrust(false);
+        return; // Exit early, no further input processing during warp
+    }
+    
     // === KEYBOARD INPUT ===
     // Turn left (A key or Left arrow)
     if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
@@ -268,15 +284,21 @@ void GameController::handleInput() {
         pThePlayer->fireButtonPressed();
     }
     
-    // New game (N key)
-    if (IsKeyPressed(KEY_N)) {
-        newGame();
-    }
-    
     // === CONTROLLER INPUT (ADDITIVE) ===
     // PS4 Controller input handling with enhanced support
     if (Window::mControllerIndex >= 0) {
         int gamepadId = Window::mControllerIndex;
+        
+        // === GAME CONTROLS (work during warp) ===
+        // Start button (Options) for new game
+        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {  // Options/Start
+            newGame();
+        }
+        
+        // Share button for pause (alternative)
+        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) {  // Share/Select
+            // Could add pause functionality here if needed
+        }
         
         // === TURNING CONTROLS ===
         // Method 1: Left analog stick (preferred for smooth control)
@@ -324,17 +346,6 @@ void GameController::handleInput() {
         // Method 3: Circle button (PS4 Circle = right face button)  
         if (IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {  // Circle
             thrust = true;  // Add to keyboard input
-        }
-                
-        // === GAME CONTROLS ===
-        // Start button (Options) for new game
-        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {  // Options/Start
-            newGame();
-        }
-        
-        // Share button for pause (alternative)
-        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) {  // Share/Select
-            // Could add pause functionality here if needed
         }
         
         // Triangle button for special actions
@@ -406,13 +417,14 @@ void GameController::checkCollisions() {
         }
     }
 
-    if (pThePlayer->getActive()) {
+    // Only check player collisions if player is active and not already hit
+    if (pThePlayer->getActive() && !pThePlayer->getHit()) {
         for (int ship = 0; ship < pTheEnemyController->getEnemyCount(); ship++) {
             if (pTheEnemyController->getEnemyActive(ship)) {
                 if (doesEnemyCollideWithPlayer(ship)) {
                     audio.PlaySoundFile("PlayerHit");
                     if (playerHit()) {
-                        break; // Exit collision checking since player is respawning
+                        return; // Exit collision checking since player is respawning
                     }
                 }
             }
@@ -499,7 +511,7 @@ void GameController::checkCollisions() {
                     audio.PlaySoundFile("PlayerHit");
                     if (playerHit()) {
                         // Player was hit and still has lives remaining
-                        break; // Exit collision checking since player is respawning
+                        return; // Exit collision checking since player is respawning
                     }
                 }
             }
@@ -512,7 +524,7 @@ void GameController::checkCollisions() {
             audio.PlaySoundFile("PlayerHit");
             if (playerHit()) {
                 // Player was hit and still has lives remaining
-                // Exit collision checking since player is respawning
+                return; // Exit collision checking since player is respawning
             }
         }
     }
@@ -630,10 +642,6 @@ bool GameController::doesEnemyCollideWithPlayer(int ship) {
 
     if (pThePlayer->circlesIntersect(pTheEnemyController->getEnemyLocaiton(ship), radius)) {
         pTheEnemyController->enemyHit(ship);
-
-        if (playerHit())
-            m_Respawn = true;
-
         return true;
     }
 
@@ -645,10 +653,6 @@ bool GameController::doesLeadCollideWithPlayer() {
 
     if (pThePlayer->circlesIntersect(pLeader->getLocation(), radius)) {
         pTheEnemyController->leadEnemyHit();
-
-        if (playerHit())
-            m_Respawn = true;
-
         return true;
     }
 
@@ -660,10 +664,6 @@ bool GameController::doesFollowCollideWithPlayer() {
 
     if (pThePlayer->circlesIntersect(pFollower->getLocation(), radius)) {
         pTheEnemyController->followEnemyHit();
-
-        if (playerHit())
-            m_Respawn = true;
-
         return true;
     }
 
@@ -675,10 +675,6 @@ bool GameController::doesFighterCollideWithPlayer() {
 
     if (pThePlayer->circlesIntersect(pFighter->getLocation(), radius)) {
         pFighter->explode();
-
-        if (playerHit())
-            m_Respawn = true;
-
         return true;
     }
 
@@ -690,10 +686,6 @@ bool GameController::doesFollowMineHitPalyer(int mine) {
 
     if (pThePlayer->circlesIntersect(pFollower->getMineLocaiton(mine), radius)) {
         pFollower->mineHit(mine);
-
-        if (playerHit())
-            m_Respawn = true;
-
         return true;
     }
 
@@ -705,10 +697,6 @@ bool GameController::doesFighterMineHitPlayer(int mine) {
 
     if (pThePlayer->circlesIntersect(pFighter->getMineLocaiton(mine), radius)) {
         pFighter->mineHit(mine);
-
-        if (playerHit())
-            m_Respawn = true;
-
         return true;
     }
 
@@ -720,10 +708,6 @@ bool GameController::doesLeadShootPlayer() {
 
     if (pThePlayer->circlesIntersect(pLeader->getShotLocation(), radius)) {
         pLeader->shotHitTarget();
-
-        if (playerHit())
-            m_Respawn = true;
-
         return true;
     }
 
@@ -735,10 +719,6 @@ bool GameController::doesFighterShootPlayer() {
 
     if (pThePlayer->circlesIntersect(pFighter->getShotLocation(), radius)) {
         pFighter->shotHitTarget();
-
-        if (playerHit())
-            m_Respawn = true;
-
         return true;
     }
 
@@ -773,6 +753,10 @@ bool GameController::playerHit() {
         pThePlayer->hit();
         m_Timer = pTimer->seconds() + m_TimerAmount * 0.01;
         m_Respawn = true;
+        
+        // Trigger warp effect for player respawn
+        triggerWarpTransition(1.5f); // Shorter duration for respawn
+        
         return true;
     } else {
         pThePlayer->setActive(false);
