@@ -99,6 +99,7 @@ class GameController : Common {
     float m_WarpDuration;
     float m_WarpStartTime;
     bool m_IsFirstWave;
+    bool m_WaitingForWarp; // NEW: Flag to indicate we're waiting for warp to complete before spawning
     
     // Random number generator for Rock creation
     std::mt19937 m_RandomGenerator;

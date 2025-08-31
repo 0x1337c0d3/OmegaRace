@@ -34,6 +34,7 @@ GameController::GameController() {
     m_WarpDuration = 2.0f;
     m_WarpStartTime = 0.0f;
     m_IsFirstWave = true;
+    m_WaitingForWarp = false;
     
     // Initialize UFO system
     m_UFO = new UFO();
@@ -83,45 +84,58 @@ void GameController::initialize() {
 
 void GameController::update(double Frame) {
     AudioEngine::Update();
-    pTheBorders->update();
-    pThePlayer->update(Frame);
-    pTheEnemyController->update(Frame);
-    updateRocks(Frame); // Update rocks
-    updateUFO(Frame); // Update UFO
-    pFighter->setPlayerLocation(pThePlayer->getLocation());
-    pLeader->setPlayerLocation(pThePlayer->getLocation());
-    pTheEnemyController->setPlayerPosition(pThePlayer->getLocation()); // For menacing FollowEnemy effects
-    pStatus->setScore(m_Score);
+    
+    // Only update gameplay entities if not during warp transition
+    if (!m_WarpActive) {
+        pTheBorders->update();
+        pThePlayer->update(Frame);
+        pTheEnemyController->update(Frame);
+        updateRocks(Frame); // Update rocks
+        updateUFO(Frame); // Update UFO
+        pFighter->setPlayerLocation(pThePlayer->getLocation());
+        pLeader->setPlayerLocation(pThePlayer->getLocation());
+        pTheEnemyController->setPlayerPosition(pThePlayer->getLocation()); // For menacing FollowEnemy effects
+        pStatus->setScore(m_Score);
 
-    if (pThePlayer->getActive()) {
-        for (int line = 0; line < 4; line++) {
-            if (pThePlayer->getInsideLineHit(line))
-                pTheBorders->setInsideLineHit(line);
-
-            if (pFighter->getActive()) {
-                if (pFighter->getInsideLineHit(line))
+        if (pThePlayer->getActive()) {
+            for (int line = 0; line < 4; line++) {
+                if (pThePlayer->getInsideLineHit(line))
                     pTheBorders->setInsideLineHit(line);
+
+                if (pFighter->getActive()) {
+                    if (pFighter->getInsideLineHit(line))
+                        pTheBorders->setInsideLineHit(line);
+                }
             }
-        }
 
-        for (int line = 0; line < 8; line++) {
-            if (pThePlayer->getOutsideLineHit(line))
-                pTheBorders->setOutsideLineHit(line);
-
-            if (pFighter->getActive()) {
-                if (pFighter->getOutsideLineHit(line))
+            for (int line = 0; line < 8; line++) {
+                if (pThePlayer->getOutsideLineHit(line))
                     pTheBorders->setOutsideLineHit(line);
+
+                if (pFighter->getActive()) {
+                    if (pFighter->getOutsideLineHit(line))
+                        pTheBorders->setOutsideLineHit(line);
+                }
             }
         }
+        
+        checkCollisions();
     }
-
-    checkCollisions();
 
     if (m_EndOfWave) {
         if (!pTheEnemyController->checkExploding()) {
-            completeWaveCleanup(); // NEW: Clean up all remaining entities
-            spawnNewWave(pTheEnemyController->newWave());
-            m_EndOfWave = false;
+            if (!m_WaitingForWarp) {
+                // First time wave ends - clean up and trigger warp
+                completeWaveCleanup(); // NEW: Clean up all remaining entities
+                triggerWarpTransition(1.8f); // Trigger warp effect
+                m_WaitingForWarp = true; // Set flag to wait for warp completion
+            } else if (!m_WarpActive) {
+                // Warp has completed - now spawn the new wave
+                spawnNewWave(pTheEnemyController->newWave());
+                m_EndOfWave = false;
+                m_WaitingForWarp = false;
+            }
+            // If m_WarpActive is still true, just wait for it to complete
         }
     } else if (m_Respawn) {
         if (m_Timer < pTimer->seconds()) {
@@ -193,6 +207,7 @@ void GameController::draw() {
 void GameController::newGame() {
     triggerWarpTransition(2.5f); // Longer warp for new game
     m_IsFirstWave = true; // Reset flag for new game
+    m_WaitingForWarp = false; // Reset wave waiting flag for new game
     
     // Clear existing rocks
     for (omegarace::Rock* rock : m_Rocks) {
@@ -725,10 +740,7 @@ bool GameController::doesFighterShootPlayer() {
 }
 
 void GameController::spawnNewWave(int ships) {
-    // Only trigger warp for subsequent waves (not the initial spawn from newGame)
-    if (!m_IsFirstWave) {
-        triggerWarpTransition(1.8f); // Slightly shorter warp for new waves
-    }
+    // Note: Warp transition is now handled in the update() method before calling this
     m_IsFirstWave = false;
         
     bool rightSide;
