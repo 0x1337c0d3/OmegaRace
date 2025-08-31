@@ -58,35 +58,77 @@ Survive waves of enemies while scoring points by destroying ships and avoiding m
 ### Architecture
 ```
 src/
-├── Game.cpp/h              # Main game loop and application management
-├── GameController.cpp/h    # Core game logic and state management
-├── Player.cpp/h            # Player ship and input handling
-├── Entity.cpp/h            # Base entity class for game objects
-├── Ship.cpp/h              # Base ship rendering and physics
-├── PlayerShip.cpp/h        # Enhanced player ship with effects
-├── Enemy.cpp/h             # Base enemy functionality
-├── LeadEnemy.cpp/h         # Aggressive enemy AI
-├── FollowEnemy.cpp/h       # Path-following enemy AI
-├── Fighter.cpp/h           # Advanced enemy with shooting
-├── Mine.cpp/h              # Mine entities and behavior
-├── TriShip.cpp/h           # Triangular ship rendering
-├── AudioEngine.cpp/h       # Sound effect management
-├── Borders.cpp/h           # Arena boundary system
-├── Window.cpp/h            # Display and rendering management
-└── vmath.h                 # Vector mathematics utilities
+├── main.cpp                   # Application entry point
+├── core/                      # Core systems
+│   ├── Game.cpp/h            # Main game loop and application management
+│   ├── GameController.cpp/h  # Core game logic and state management
+│   ├── Timer.cpp/h           # Timing utilities
+│   ├── Common.cpp/h          # Shared definitions and utilities
+│   ├── vmath.cpp/h           # Vector mathematics library
+│   └── Logger.cpp/h          # Logging system
+├── entities/                  # Game objects
+│   ├── Entity.cpp/h          # Base entity class
+│   ├── Player.cpp/h          # Player ship and input handling
+│   ├── Enemy.cpp/h           # Base enemy functionality
+│   ├── EnemyController.cpp/h # Enemy management system
+│   ├── LeadEnemy.cpp/h       # Aggressive enemy AI
+│   ├── FollowEnemy.cpp/h     # Path-following enemy AI
+│   ├── Fighter.cpp/h         # Advanced enemy with shooting
+│   ├── Mine.cpp/h            # Mine entities and behavior
+│   ├── DoubleMine.cpp/h      # Double mine variants
+│   ├── UFO.cpp/h             # UFO bonus enemies
+│   ├── Rock.cpp/h            # Rock obstacles
+│   ├── Shot.cpp/h            # Projectile system
+│   └── PlayerShot.cpp/h      # Player projectiles
+├── graphics/                  # Rendering and visual effects
+│   ├── Window.cpp/h          # Display and rendering management
+│   ├── Ship.cpp/h            # Base ship rendering and physics
+│   ├── PlayerShip.cpp/h      # Enhanced player ship with effects
+│   ├── TriShip.cpp/h         # Triangular ship rendering
+│   ├── FighterShip.cpp/h     # Fighter ship visual effects
+│   ├── VapourTrail.cpp/h     # Trail effect system
+│   ├── Explosion.cpp/h       # Explosion particle effects
+│   ├── ExplosionLine.cpp/h   # Explosion line effects
+│   ├── PlayerExplosionLine.cpp/h # Player-specific explosions
+│   ├── Borders.cpp/h         # Arena boundary system
+│   ├── HUD.cpp/h             # Heads-up display
+│   ├── StatusDisplay.cpp/h   # Status information display
+│   ├── Letter.cpp/h          # Text rendering system
+│   └── Number.cpp/h          # Number rendering system
+├── audio/                     # Sound and music
+│   └── AudioEngine.cpp/h     # FMOD audio management
+└── resources/                 # Game assets
+    ├── audio/                # Sound effects and music
+    ├── shaders/              # Graphics shaders
+    └── textures/             # Sprite and texture files
 ```
 
 ### Dependencies
+- **CMake 3.15+** - Modern build system
 - **Raylib** - Graphics and input handling
 - **FMOD** - Audio engine for sound effects
-- **macOS 11.0+** - Target platform
-- **Xcode** - Development environment
+- **C++17 Compiler** - GCC, Clang, or MSVC
+- **Platform**: macOS 14.6+, Windows 10+, or Linux
 
-## 🚀 Building the Game
+### Build System
+The project uses **CMake** for cross-platform building:
+
+```bash
+# Quick build (Release mode)
+./scripts/build.sh
+
+# Debug build
+./scripts/build.sh Debug
+
+# Manual CMake build
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . -j$(nproc)
+```
 
 ### Prerequisites
-- Xcode 12.0 or later
-- macOS 11.0 or later
+- Xcode 16.0 or later
+- macOS 14.6 or later
 - Raylib (installed via Homebrew)
 - FMOD SDK (included in ThirdParty/)
 
@@ -161,13 +203,13 @@ Game settings and configuration:
 ## 📋 System Requirements
 
 ### Minimum Requirements
-- macOS 11.0 (Big Sur) or later
+- macOS 14.6 or later
 - 2GB RAM
 - Metal-compatible graphics
 - 100MB available storage
 
 ### Recommended
-- macOS 12.0 (Monterey) or later
+- macOS 14.6 or later
 - 4GB RAM
 - Dedicated graphics card
 - Game controller for optimal experience

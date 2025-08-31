@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>@PROJECT_NAME@</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.omegarace.game</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Omega Race</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@PROJECT_VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@PROJECT_VERSION@</string>
+	<key>GCSupportedGameControllers</key>
+	<array>
+		<dict>
+			<key>ProfileName</key>
+			<string>ExtendedGamepad</string>
+		</dict>
+		<dict>
+			<key>ProfileName</key>
+			<string>DirectionalGamepad</string>
+		</dict>
+		<dict>
+			<key>ProfileName</key>
+			<string>MicroGamepad</string>
+		</dict>
+	</array>
+	<key>GCSupportsControllerUserInteraction</key>
+	<true/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.arcade-games</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.15</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2025 One Red Dog Media. All rights reserved.</string>
+</dict>
+</plist>
