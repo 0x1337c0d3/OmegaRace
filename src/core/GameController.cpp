@@ -1,5 +1,6 @@
 #include "GameController.h"
 #include <ctime>
+#include <cmath> 
 
 namespace omegarace {
 
@@ -785,39 +786,80 @@ void GameController::spawnRocks(int waveNumber) {
         numRocks = 8; // Cap at 8 rocks
     }
     
+    // Calculate player spawn positions (same logic as Player::spawn())
+    // Player positions depend on rightSide flag - let's calculate both positions
+    float player1X = 1024.0f / 11.1f; // Left side player (~92px)
+    float player1Y = 768.0f / 3.0f;   // Both players same Y (~256px)
+    float player2X = 1024.0f / 1.1f;  // Right side player (~931px)
+    float player2Y = 768.0f / 3.0f;   // Both players same Y (~256px)
+    
+    float safeZoneRadius = 120.0f; // Safe distance from player spawn points
+    
     for (int i = 0; i < numRocks; i++) {
         omegarace::Rock* pRock = new omegarace::Rock(m_RandomGenerator);
         
-        // Spawn rocks at random positions around the edge of the play area
+        // Try to find a safe spawn position
         omegarace::Vector2f spawnLocation;
         omegarace::Vector2f spawnVelocity;
-        int edge = rand() % 4; // 0: top, 1: right, 2: bottom, 3: left
+        bool foundSafePosition = false;
+        int attempts = 0;
+        const int maxAttempts = 10;
         
-        switch (edge) {
-            case 0: // Top edge
-                spawnLocation.x = (float)(rand() % 1024);
-                spawnLocation.y = 50.0f;
-                spawnVelocity.x = (float)((rand() % 20) - 10); // -10 to 10
-                spawnVelocity.y = (float)(rand() % 10 + 5); // 5 to 15
-                break;
-            case 1: // Right edge
-                spawnLocation.x = 974.0f;
-                spawnLocation.y = (float)(rand() % 768);
-                spawnVelocity.x = -(float)(rand() % 10 + 5); // -15 to -5
-                spawnVelocity.y = (float)((rand() % 20) - 10); // -10 to 10
-                break;
-            case 2: // Bottom edge
-                spawnLocation.x = (float)(rand() % 1024);
-                spawnLocation.y = 718.0f;
-                spawnVelocity.x = (float)((rand() % 20) - 10); // -10 to 10
-                spawnVelocity.y = -(float)(rand() % 10 + 5); // -15 to -5
-                break;
-            case 3: // Left edge
-                spawnLocation.x = 50.0f;
-                spawnLocation.y = (float)(rand() % 768);
-                spawnVelocity.x = (float)(rand() % 10 + 5); // 5 to 15
-                spawnVelocity.y = (float)((rand() % 20) - 10); // -10 to 10
-                break;
+        while (!foundSafePosition && attempts < maxAttempts) {
+            int edge = rand() % 4; // 0: top, 1: right, 2: bottom, 3: left
+            
+            switch (edge) {
+                case 0: // Top edge
+                    spawnLocation.x = (float)(rand() % 1024);
+                    spawnLocation.y = 50.0f;
+                    spawnVelocity.x = (float)((rand() % 20) - 10); // -10 to 10
+                    spawnVelocity.y = (float)(rand() % 10 + 5); // 5 to 15
+                    break;
+                case 1: // Right edge
+                    spawnLocation.x = 974.0f;
+                    spawnLocation.y = (float)(rand() % 768);
+                    spawnVelocity.x = -(float)(rand() % 10 + 5); // -15 to -5
+                    spawnVelocity.y = (float)((rand() % 20) - 10); // -10 to 10
+                    break;
+                case 2: // Bottom edge
+                    spawnLocation.x = (float)(rand() % 1024);
+                    spawnLocation.y = 718.0f;
+                    spawnVelocity.x = (float)((rand() % 20) - 10); // -10 to 10
+                    spawnVelocity.y = -(float)(rand() % 10 + 5); // -15 to -5
+                    break;
+                case 3: // Left edge
+                    spawnLocation.x = 50.0f;
+                    spawnLocation.y = (float)(rand() % 768);
+                    spawnVelocity.x = (float)(rand() % 10 + 5); // 5 to 15
+                    spawnVelocity.y = (float)((rand() % 20) - 10); // -10 to 10
+                    break;
+            }
+            
+            // Check distance from both player spawn positions
+            float dist1 = sqrt(pow(spawnLocation.x - player1X, 2) + pow(spawnLocation.y - player1Y, 2));
+            float dist2 = sqrt(pow(spawnLocation.x - player2X, 2) + pow(spawnLocation.y - player2Y, 2));
+            
+            if (dist1 >= safeZoneRadius && dist2 >= safeZoneRadius) {
+                foundSafePosition = true;
+            }
+            
+            attempts++;
+        }
+        
+        // If we couldn't find a safe edge position, use fallback positions
+        if (!foundSafePosition) {
+            // Use safe center positions as fallback
+            if (i % 2 == 0) {
+                spawnLocation.x = 512.0f; // Center X
+                spawnLocation.y = 150.0f; // Upper center
+                spawnVelocity.x = (float)((rand() % 20) - 10);
+                spawnVelocity.y = (float)(rand() % 10 + 5);
+            } else {
+                spawnLocation.x = 512.0f; // Center X
+                spawnLocation.y = 618.0f; // Lower center
+                spawnVelocity.x = (float)((rand() % 20) - 10);
+                spawnVelocity.y = -(float)(rand() % 10 + 5);
+            }
         }
         
         pRock->activate(spawnLocation, spawnVelocity);
