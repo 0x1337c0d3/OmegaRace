@@ -104,6 +104,10 @@ class GameController : Common {
     
     // Random number generator for Rock creation
     std::mt19937 m_RandomGenerator;
+
+    // Bonus life system
+    int m_NextBonusLifeThreshold;
+    void checkBonusLife(); // NEW: Check if player has earned a bonus life
 };
 
 } // namespace omegarace

@@ -30,6 +30,9 @@ GameController::GameController() {
     // Initialize random generator for Rock creation
     m_RandomGenerator.seed(static_cast<unsigned int>(time(nullptr)));
     
+    // Initialize bonus life system
+    m_NextBonusLifeThreshold = 50000;
+    
     // Initialize warp transition system
     m_WarpActive = false;
     m_WarpDuration = 2.0f;
@@ -41,6 +44,9 @@ GameController::GameController() {
     m_UFO = new UFO();
     m_UFOSpawnTimer = 0.0f;
     m_UFOSpawnInterval = 15.0f; // UFO spawns every 15 seconds
+    
+    // Initialize bonus life system
+    m_NextBonusLifeThreshold = 50000;
 }
 
 GameController::~GameController() {
@@ -154,6 +160,9 @@ void GameController::update(double Frame) {
             m_Timer = pTimer->seconds() + m_TimerAmount * 0.05;
         }
     }
+
+    // Check for bonus life after wave cleanup points
+    checkBonusLife();
 }
 
 void GameController::draw() {
@@ -163,8 +172,10 @@ void GameController::draw() {
     // Create distortion sources for grid warping
     std::vector<DistortionSource> distortionSources;
     
-    // Always add player as primary distortion source
-    distortionSources.push_back(DistortionSource(playerPos, 1.0f));
+    // Only add player as distortion source if active and visible
+    if (pThePlayer->getActive() && !m_WarpActive) {
+        distortionSources.push_back(DistortionSource(playerPos, 1.0f));
+    }
     
     // Add Fighter distortion if active - more intense warping effect
     if (pFighter && pFighter->getActive()) {
@@ -238,6 +249,7 @@ void GameController::newGame() {
     spawnNewWave(pTheEnemyController->newGame());
     m_Score = 0;
     m_PlayerShips = 4;
+    m_NextBonusLifeThreshold = 50000;
     pStatus->setShip(m_PlayerShips);
     m_EndOfWave = false;
     audio.PlayEvent("event:/Horizontal Souls");
@@ -377,37 +389,44 @@ void GameController::checkCollisions() {
             if (doesPlayerShotEnemy(shot)) {
                 audio.PlaySoundFile("EnemyHit");
                 m_Score += 1000;
+                checkBonusLife();
             }
 
             if (doesPlayerShootLeadEnemy(shot)) {
                 audio.PlaySoundFile("LeadEnemyHit");
                 m_Score += 1500;
+                checkBonusLife();
             }
 
             if (doesPlayerShootFollowEnemy(shot)) {
                 audio.PlaySoundFile("FollowerHit");
                 m_Score += 1500;
+                checkBonusLife();
             }
 
             if (doesPlayerShootFighter(shot)) {
                 audio.PlaySoundFile("FighterHit");
                 m_Score += 2500;
+                checkBonusLife();
             }
 
             if (doesPlayerShootFollowMine(shot)) {
                 audio.PlaySoundFile("MineHit");
                 m_Score += 350;
+                checkBonusLife();
             }
 
             if (doesPlayerShootFighterMine(shot)) {
                 audio.PlaySoundFile("MineHit");
                 m_Score += 500;
+                checkBonusLife();
             }
             
             // Check rock shooting
             if (doesPlayerShootRock(shot)) {
                 audio.PlaySoundFile("MineHit");
                 m_Score += 750;
+                checkBonusLife();
             }
             
             // Check UFO shooting
@@ -528,6 +547,21 @@ void GameController::checkCollisions() {
                 return; // Exit collision checking since player is respawning
             }
         }
+    }
+}
+
+void GameController::checkBonusLife() {
+    // Check if player has reached the next bonus life threshold
+    if (m_Score >= m_NextBonusLifeThreshold) {
+        // Award bonus life
+        m_PlayerShips++;
+        pStatus->setShip(m_PlayerShips);
+        
+        // Play bonus life sound (same as UFO bonus sound for now)
+        audio.PlaySoundFile("Bonus");
+        
+        // Set next bonus life threshold (every 50,000 points)
+        m_NextBonusLifeThreshold += 50000;
     }
 }
 
@@ -995,6 +1029,7 @@ bool GameController::doesPlayerShootUFO(int shot) {
         
         // Award points for UFO destruction (high value)
         m_Score += 1500;
+        checkBonusLife();
         
         // Play explosion sound through FMOD system
         // audio.PlaySoundFile("UFOHit");
@@ -1035,6 +1070,7 @@ void GameController::completeWaveCleanup() {
             
             // Award small bonus points for automatic rock destruction
             m_Score += 100;
+            checkBonusLife();
         }
     }
     
@@ -1046,6 +1082,7 @@ void GameController::completeWaveCleanup() {
         
         // Award bonus points for automatic UFO destruction
         m_Score += 500;
+        checkBonusLife();
     }
     
     // Clear all lingering entity states
