@@ -10,18 +10,20 @@ class VapourTrail {
     ~VapourTrail();
 
     void setActive(bool active);
-    bool isActive() const { return m_Active; }
-    
+    bool isActive() const {
+        return m_Active;
+    }
+
     void update(const Vector2f& position);
     void draw();
-    
+
     // Customization options
     void setTrailColor(const Color& color);
-    void setFadeRate(float fadeRate);           // How fast trail fades (default 0.015f)
-    void setUpdateFrequency(int frequency);     // How often to add points (default 2)
-    void setMaxThickness(float thickness);      // Maximum trail thickness (default 2.0f)
-    void setMinThickness(float thickness);      // Minimum trail thickness (default 0.5f)
-    
+    void setFadeRate(float fadeRate);       // How fast trail fades (default 0.015f)
+    void setUpdateFrequency(int frequency); // How often to add points (default 2)
+    void setMaxThickness(float thickness);  // Maximum trail thickness (default 2.0f)
+    void setMinThickness(float thickness);  // Minimum trail thickness (default 0.5f)
+
     // Public method to clear trail for state reset
     void clearTrail();
 
@@ -34,7 +36,7 @@ class VapourTrail {
     float m_FadeRate;
     float m_MaxThickness;
     float m_MinThickness;
-    
+
     Vector2f* m_TrailPoints;
     float* m_TrailAlpha;
     Color m_TrailColor;

@@ -362,18 +362,18 @@ void EnemyController::clearAllVaporTrails() {
             m_EnemyShips[ship]->clearVaporTrail();
         }
     }
-    
+
     // Clear LeadEnemy vapor trail
     if (pLeadEnemyShip) {
         pLeadEnemyShip->clearVaporTrail();
     }
-    
+
     // Clear FollowEnemy vapor trail (TriShip)
     if (pFollowEnemyShip) {
         pFollowEnemyShip->clearVaporTrail();
     }
-    
-    // Clear Fighter vapor trail 
+
+    // Clear Fighter vapor trail
     if (pFighter) {
         pFighter->clearVaporTrail();
     }

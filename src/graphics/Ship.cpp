@@ -5,17 +5,17 @@ namespace omegarace {
 Ship::Ship() {
     // Initialize vapour trail with 20 points for ships (slightly shorter than player)
     m_VapourTrail = std::make_unique<VapourTrail>(20);
-    
+
     // Set a brighter, more visible color for enemy ships
     Color enemyTrailColor;
     enemyTrailColor.red = 250;
     enemyTrailColor.green = 180;
-    enemyTrailColor.blue = 100;  // Orange-ish trail for enemies
+    enemyTrailColor.blue = 100; // Orange-ish trail for enemies
     enemyTrailColor.alpha = 255;
     m_VapourTrail->setActive(true);
     m_VapourTrail->setTrailColor(enemyTrailColor);
     m_VapourTrail->setMaxThickness(5.0f);
- }
+}
 
 Ship::~Ship() {
 }
@@ -47,7 +47,7 @@ void Ship::initialize() {
 
 void Ship::update(float rotation, const Vector2f& location, float scale) {
     moveRotateLines(rotation, location, scale);
-    
+
     // Calculate rear position for vapour trail (behind the ship)
     Vector2f rearPosition = getRearPosition(rotation, location, scale);
     m_VapourTrail->update(rearPosition);
@@ -56,7 +56,7 @@ void Ship::update(float rotation, const Vector2f& location, float scale) {
 void Ship::draw() {
     // Draw vapour trail first (behind ship)
     m_VapourTrail->draw();
-    
+
     // Draw ship hull
     for (int line = 0; line < 8; line++) {
         Window::DrawVolumetricLineWithBloom(&NewShipLines[line], m_ShipColor, 1.0f, 1.0f);
@@ -94,15 +94,15 @@ Vector2f Ship::getRearPosition(float rotation, const Vector2f& centerLocation, f
     // This is based on the ship design where line 4 goes from (-4, 0) to (0, -4)
     float rearOffsetX = -4.0f * scale;
     float rearOffsetY = 0.0f * scale;
-    
+
     // Apply rotation
     float sinRot = sin(rotation);
     float cosRot = cos(rotation);
-    
+
     Vector2f rearPosition;
     rearPosition.x = centerLocation.x + (rearOffsetX * cosRot - rearOffsetY * sinRot);
     rearPosition.y = centerLocation.y + (rearOffsetX * sinRot + rearOffsetY * cosRot);
-    
+
     return rearPosition;
 }
 

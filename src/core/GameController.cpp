@@ -1,34 +1,31 @@
 #include "GameController.h"
+#include <cmath>
 #include <ctime>
-#include <cmath> 
 
 namespace omegarace {
 
-static StatusDisplay::GAME_STATE states[3] = {
-    StatusDisplay::APP_START,
-    StatusDisplay::APP_INSTRUCTIONS,
-    StatusDisplay::APP_GAMEOVER
-};
+static StatusDisplay::GAME_STATE states[3] = {StatusDisplay::APP_START, StatusDisplay::APP_INSTRUCTIONS,
+                                              StatusDisplay::APP_GAMEOVER};
 
 GameController::GameController() {
     std::cout << "GameController constructor starting..." << std::endl;
-    
+
     std::cout << "Creating Player..." << std::endl;
     pThePlayer = std::make_unique<Player>();
     std::cout << "Player created successfully" << std::endl;
-    
+
     std::cout << "Creating Borders..." << std::endl;
     pTheBorders = std::make_unique<Borders>();
     std::cout << "Borders created successfully" << std::endl;
-    
+
     std::cout << "Creating EnemyController..." << std::endl;
     pTheEnemyController = std::make_unique<EnemyController>();
     std::cout << "EnemyController created successfully" << std::endl;
-    
+
     std::cout << "Creating StatusDisplay..." << std::endl;
     pStatus = std::make_unique<StatusDisplay>();
     std::cout << "StatusDisplay created successfully" << std::endl;
-    
+
     m_Score = 0;
     m_PlayerShips = 4; // Start with 4 extra lives (5 total including current life)
     m_EndOfWave = false;
@@ -39,25 +36,25 @@ GameController::GameController() {
     pTimer = std::make_unique<Timer>();
     pTimer->start();
     m_Respawn = false;
-    
+
     // Initialize random generator for Rock creation
     m_RandomGenerator.seed(static_cast<unsigned int>(time(nullptr)));
-    
+
     // Initialize bonus life system
     m_NextBonusLifeThreshold = 50000;
-    
+
     // Initialize warp transition system
     m_WarpActive = false;
     m_WarpDuration = 2.0f;
     m_WarpStartTime = 0.0f;
     m_IsFirstWave = true;
     m_WaitingForWarp = false;
-    
+
     // Initialize UFO system
     m_UFO = new UFO();
     m_UFOSpawnTimer = 0.0f;
     m_UFOSpawnInterval = 15.0f; // UFO spawns every 15 seconds
-    
+
     // Initialize bonus life system
     m_NextBonusLifeThreshold = 50000;
 }
@@ -68,10 +65,10 @@ GameController::~GameController() {
         delete rock;
     }
     m_Rocks.clear();
-    
+
     // Clean up UFO
     delete m_UFO;
-    
+
     AudioEngine::Shutdown();
 }
 
@@ -98,20 +95,20 @@ void GameController::initialize() {
     AudioEngine::LoadSound("FighterHit");
     AudioEngine::LoadSound("MineHit");
     AudioEngine::LoadSound("PlayerHit");
-    
+
     // Initialize rock system (sound will be handled through FMOD like other sounds)
 }
 
 void GameController::update(double Frame) {
     AudioEngine::Update();
-    
+
     // Only update gameplay entities if not during warp transition
     if (!m_WarpActive) {
         pTheBorders->update();
         pThePlayer->update(Frame);
         pTheEnemyController->update(Frame);
         updateRocks(Frame); // Update rocks
-        updateUFO(Frame); // Update UFO
+        updateUFO(Frame);   // Update UFO
         pFighter->setPlayerLocation(pThePlayer->getLocation());
         pLeader->setPlayerLocation(pThePlayer->getLocation());
         pTheEnemyController->setPlayerPosition(pThePlayer->getLocation()); // For menacing FollowEnemy effects
@@ -138,7 +135,7 @@ void GameController::update(double Frame) {
                 }
             }
         }
-        
+
         checkCollisions();
     }
 
@@ -146,9 +143,9 @@ void GameController::update(double Frame) {
         if (!pTheEnemyController->checkExploding()) {
             if (!m_WaitingForWarp) {
                 // First time wave ends - clean up and trigger warp
-                completeWaveCleanup(); // NEW: Clean up all remaining entities
+                completeWaveCleanup();       // NEW: Clean up all remaining entities
                 triggerWarpTransition(1.8f); // Trigger warp effect
-                m_WaitingForWarp = true; // Set flag to wait for warp completion
+                m_WaitingForWarp = true;     // Set flag to wait for warp completion
             } else if (!m_WarpActive) {
                 // Warp has completed - now spawn the new wave
                 spawnNewWave(pTheEnemyController->newWave());
@@ -158,6 +155,14 @@ void GameController::update(double Frame) {
             // If m_WarpActive is still true, just wait for it to complete
         }
     } else if (m_Respawn) {
+        // Check if player explosion is finished before allowing respawn
+        if (!pThePlayer->getExplosionOn()) {
+            // Player explosion is finished, trigger warp transition if not already active
+            if (!m_WarpActive) {
+                triggerWarpTransition(1.5f); // Trigger warp effect for player respawn
+            }
+        }
+
         if (m_Timer < pTimer->seconds()) {
             spawnNewWave(pTheEnemyController->restartWave());
             m_Respawn = false;
@@ -181,39 +186,39 @@ void GameController::update(double Frame) {
 void GameController::draw() {
     // Draw the Geometry Wars grid background first (behind everything)
     Vector2f playerPos = pThePlayer->getLocation();
-    
+
     // Create distortion sources for grid warping
     std::vector<DistortionSource> distortionSources;
-    
+
     // Only add player as distortion source if active and visible
     if (pThePlayer->getActive() && !m_WarpActive) {
         distortionSources.push_back(DistortionSource(playerPos, 1.0f));
     }
-    
+
     // Add Fighter distortion if active - more intense warping effect
     if (pFighter && pFighter->getActive()) {
         Vector2f fighterPos = pFighter->getLocation();
         // Fighter creates stronger distortion with larger radius for more dramatic effect
         distortionSources.push_back(DistortionSource(fighterPos, 1.5f, 100.0f));
     }
-    
+
     pTheBorders->drawBackground(distortionSources);
-    
+
     // Only draw player if warp transition is not active
     if (!m_WarpActive) {
         pThePlayer->draw();
     }
     pTheEnemyController->draw();
     drawRocks(); // Draw rocks
-    drawUFO(); // Draw UFO
+    drawUFO();   // Draw UFO
     pTheBorders->draw();
     pStatus->draw();
-    
+
     // Draw full screen warp transition effect if active
     if (m_WarpActive) {
         float elapsedTime = pTimer->seconds() - m_WarpStartTime;
         float warpProgress = elapsedTime / m_WarpDuration;
-        
+
         if (warpProgress <= 1.0f) {
             // Create an intensity curve that's more visible throughout the transition
             float intensity;
@@ -224,7 +229,7 @@ void GameController::draw() {
                 // Ramp down from 1.0 to 0.5, not to 0
                 intensity = 0.5f + ((1.0f - warpProgress) * 1.0f); // Ramp from 1.0 to 0.5
             }
-            
+
             Window::BeginWarpTransition();
             Window::DrawFullScreenWarp(intensity, elapsedTime * 2.0f);
             Window::EndWarpTransition();
@@ -236,16 +241,16 @@ void GameController::draw() {
 
 void GameController::newGame() {
     triggerWarpTransition(2.5f); // Longer warp for new game
-    m_IsFirstWave = true; // Reset flag for new game
-    m_WaitingForWarp = false; // Reset wave waiting flag for new game
-    
+    m_IsFirstWave = true;        // Reset flag for new game
+    m_WaitingForWarp = false;    // Reset wave waiting flag for new game
+
     // Clear existing rocks
     for (omegarace::Rock* rock : m_Rocks) {
         delete rock;
     }
     m_Rocks.clear();
     m_CurrentWave = 1; // Reset wave counter
-    
+
     // Reset UFO system
     if (m_UFO) {
         m_UFO->setActive(false);
@@ -253,10 +258,10 @@ void GameController::newGame() {
     }
     m_UFOSpawnTimer = 0.0f;
     m_UFOSpawnInterval = 15.0f;
-    
+
     // Reset all entity states to ensure clean start
     resetAllEntityStates();
-    
+
     pThePlayer->newGame();
     pStatus->newGame();
     spawnNewWave(pTheEnemyController->newGame());
@@ -274,12 +279,12 @@ void GameController::handleInput() {
     bool turnLeft = false;
     bool turnRight = false;
     bool thrust = false;
-    
+
     // New game controls work even during warp transition
     if (Window::IsKeyPressed(KEY_N)) {
         newGame();
     }
-    
+
     // Block player movement and firing during warp transition
     if (m_WarpActive) {
         // Apply disabled input states during warp
@@ -288,98 +293,98 @@ void GameController::handleInput() {
         pThePlayer->setThrust(false);
         return; // Exit early, no further input processing during warp
     }
-    
+
     // === KEYBOARD INPUT ===
     // Turn left (A key or Left arrow)
     if (Window::IsKeyDown(KEY_A) || Window::IsKeyDown(KEY_LEFT)) {
         turnLeft = true;
     }
-    
+
     // Turn right (D key or Right arrow)
     if (Window::IsKeyDown(KEY_D) || Window::IsKeyDown(KEY_RIGHT)) {
         turnRight = true;
     }
-    
+
     // Thrust (W key or Up arrow)
     if (Window::IsKeyDown(KEY_W) || Window::IsKeyDown(KEY_UP)) {
         thrust = true;
     }
-    
+
     // Fire (S key, Space, or Left Ctrl) - use IsKeyPressed for single shot
     if (Window::IsKeyPressed(KEY_S) || Window::IsKeyPressed(KEY_SPACE) || Window::IsKeyPressed(KEY_LEFT_CONTROL)) {
         pThePlayer->fireButtonPressed();
     }
-    
+
     // === CONTROLLER INPUT (ADDITIVE) ===
     // PS4 Controller input handling with enhanced support
     if (Window::mControllerIndex >= 0) {
         int gamepadId = Window::mControllerIndex;
-        
+
         // === GAME CONTROLS (work during warp) ===
         // Start button (Options) for new game
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {  // Options/Start
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) { // Options/Start
             newGame();
         }
-        
+
         // Share button for pause (alternative)
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) {  // Share/Select
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) { // Share/Select
             // Could add pause functionality here if needed
         }
-        
+
         // === TURNING CONTROLS ===
         // Method 1: Left analog stick (preferred for smooth control)
         float leftStickX = Window::GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_LEFT_X);
         const float STICK_DEADZONE = 0.2f;
-        
+
         // Analog stick turning (smooth)
         if (leftStickX < -STICK_DEADZONE) {
-            turnLeft = true;  // Add to keyboard input
+            turnLeft = true; // Add to keyboard input
         } else if (leftStickX > STICK_DEADZONE) {
-            turnRight = true;  // Add to keyboard input
+            turnRight = true; // Add to keyboard input
         }
-        
+
         // Method 2: D-pad for precise turning (PS4 D-pad)
-        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) {  // D-pad Left
-            turnLeft = true;  // Add to keyboard input
+        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) { // D-pad Left
+            turnLeft = true;                                                         // Add to keyboard input
         }
-        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) {  // D-pad Right
-            turnRight = true;  // Add to keyboard input
+        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) { // D-pad Right
+            turnRight = true;                                                         // Add to keyboard input
         }
-        
+
         // === THRUST CONTROLS ===
         // Method 1: R1 button - PRIMARY
-        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) {  // R1 button
-            thrust = true;  // Add to keyboard input
+        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) { // R1 button
+            thrust = true;                                                            // Add to keyboard input
         }
-        
+
         // Method 2: Right analog stick up
         float rightStickY = Window::GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_RIGHT_Y);
-        if (rightStickY < -STICK_DEADZONE) {  // Up on right stick
-            thrust = true;  // Add to keyboard input
+        if (rightStickY < -STICK_DEADZONE) { // Up on right stick
+            thrust = true;                   // Add to keyboard input
         }
-                
+
         // === FIRE CONTROLS ===
         // Method 1: X button (PS4 X = bottom face button) - PRIMARY
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {  // X button
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) { // X button
             pThePlayer->fireButtonPressed();
         }
-        
+
         // Method 2: Square button (PS4 Square = left face button)
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {  // Square
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) { // Square
             pThePlayer->fireButtonPressed();
         }
-        
-        // Method 3: Circle button (PS4 Circle = right face button)  
-        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {  // Circle
-            thrust = true;  // Add to keyboard input
+
+        // Method 3: Circle button (PS4 Circle = right face button)
+        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) { // Circle
+            thrust = true;                                                             // Add to keyboard input
         }
-        
+
         // Triangle button for special actions
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_UP)) {  // Triangle
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_UP)) { // Triangle
             // Reserved for future features
         }
     }
-    
+
     // Apply combined input states (keyboard OR controller)
     pThePlayer->setTurnLeft(turnLeft);
     pThePlayer->setTurnRight(turnRight);
@@ -434,14 +439,14 @@ void GameController::checkCollisions() {
                 m_Score += 500;
                 checkBonusLife();
             }
-            
+
             // Check rock shooting
             if (doesPlayerShootRock(shot)) {
                 AudioEngine::PlaySoundFile("MineHit");
                 m_Score += 750;
                 checkBonusLife();
             }
-            
+
             // Check UFO shooting
             if (doesPlayerShootUFO(shot)) {
                 AudioEngine::PlaySoundFile("Bonus");
@@ -533,7 +538,7 @@ void GameController::checkCollisions() {
                 }
             }
         }
-        
+
         // Check rock collisions with player
         for (int rock = 0; rock < (int)m_Rocks.size(); rock++) {
             if (m_Rocks[rock] && !m_Rocks[rock]->isDestroyed()) {
@@ -549,7 +554,7 @@ void GameController::checkCollisions() {
                 }
             }
         }
-        
+
         // Check UFO collision with player
         if (doesUFOCollideWithPlayer()) {
             // Destroy the UFO to prevent multiple hits
@@ -569,10 +574,10 @@ void GameController::checkBonusLife() {
         // Award bonus life
         m_PlayerShips++;
         pStatus->setShip(m_PlayerShips);
-        
+
         // Play bonus life sound (same as UFO bonus sound for now)
         AudioEngine::PlaySoundFile("Bonus");
-        
+
         // Set next bonus life threshold (every 50,000 points)
         m_NextBonusLifeThreshold += 50000;
     }
@@ -776,7 +781,7 @@ bool GameController::doesFighterShootPlayer() {
 void GameController::spawnNewWave(int ships) {
     // Note: Warp transition is now handled in the update() method before calling this
     m_IsFirstWave = false;
-        
+
     bool rightSide;
 
     if (Window::Random(0, 1))
@@ -786,7 +791,7 @@ void GameController::spawnNewWave(int ships) {
 
     pThePlayer->spawn(rightSide);
     pTheEnemyController->spawnNewWave(rightSide, ships);
-    
+
     // Spawn rocks on later waves
     spawnRocks(m_CurrentWave);
 
@@ -801,10 +806,11 @@ bool GameController::playerHit() {
         pThePlayer->hit();
         m_Timer = pTimer->seconds() + m_TimerAmount * 0.01;
         m_Respawn = true;
-        
-        // Trigger warp effect for player respawn
-        triggerWarpTransition(1.5f); // Shorter duration for respawn
-        
+
+        // Don't trigger warp immediately - let explosion complete first
+        // The warp transition will be triggered in the update loop
+        // when the player explosion is finished
+
         return true;
     } else {
         pThePlayer->setActive(false);
@@ -826,73 +832,73 @@ void GameController::spawnRocks(int waveNumber) {
     if (waveNumber < 3) {
         return;
     }
-    
+
     // Number of rocks increases with wave number
     int numRocks = (waveNumber - 2) * 2; // Wave 3: 2 rocks, Wave 4: 4 rocks, etc.
     if (numRocks > 8) {
         numRocks = 8; // Cap at 8 rocks
     }
-    
+
     // Calculate player spawn positions (same logic as Player::spawn())
     // Player positions depend on rightSide flag - let's calculate both positions
     float player1X = 1024.0f / 11.1f; // Left side player (~92px)
     float player1Y = 768.0f / 3.0f;   // Both players same Y (~256px)
     float player2X = 1024.0f / 1.1f;  // Right side player (~931px)
     float player2Y = 768.0f / 3.0f;   // Both players same Y (~256px)
-    
+
     float safeZoneRadius = 120.0f; // Safe distance from player spawn points
-    
+
     for (int i = 0; i < numRocks; i++) {
         omegarace::Rock* pRock = new omegarace::Rock(m_RandomGenerator);
-        
+
         // Try to find a safe spawn position
         omegarace::Vector2f spawnLocation;
         omegarace::Vector2f spawnVelocity;
         bool foundSafePosition = false;
         int attempts = 0;
         const int maxAttempts = 10;
-        
+
         while (!foundSafePosition && attempts < maxAttempts) {
             int edge = rand() % 4; // 0: top, 1: right, 2: bottom, 3: left
-            
+
             switch (edge) {
                 case 0: // Top edge
                     spawnLocation.x = (float)(rand() % 1024);
                     spawnLocation.y = 50.0f;
                     spawnVelocity.x = (float)((rand() % 20) - 10); // -10 to 10
-                    spawnVelocity.y = (float)(rand() % 10 + 5); // 5 to 15
+                    spawnVelocity.y = (float)(rand() % 10 + 5);    // 5 to 15
                     break;
                 case 1: // Right edge
                     spawnLocation.x = 974.0f;
                     spawnLocation.y = (float)(rand() % 768);
-                    spawnVelocity.x = -(float)(rand() % 10 + 5); // -15 to -5
+                    spawnVelocity.x = -(float)(rand() % 10 + 5);   // -15 to -5
                     spawnVelocity.y = (float)((rand() % 20) - 10); // -10 to 10
                     break;
                 case 2: // Bottom edge
                     spawnLocation.x = (float)(rand() % 1024);
                     spawnLocation.y = 718.0f;
                     spawnVelocity.x = (float)((rand() % 20) - 10); // -10 to 10
-                    spawnVelocity.y = -(float)(rand() % 10 + 5); // -15 to -5
+                    spawnVelocity.y = -(float)(rand() % 10 + 5);   // -15 to -5
                     break;
                 case 3: // Left edge
                     spawnLocation.x = 50.0f;
                     spawnLocation.y = (float)(rand() % 768);
-                    spawnVelocity.x = (float)(rand() % 10 + 5); // 5 to 15
+                    spawnVelocity.x = (float)(rand() % 10 + 5);    // 5 to 15
                     spawnVelocity.y = (float)((rand() % 20) - 10); // -10 to 10
                     break;
             }
-            
+
             // Check distance from both player spawn positions
             float dist1 = sqrt(pow(spawnLocation.x - player1X, 2) + pow(spawnLocation.y - player1Y, 2));
             float dist2 = sqrt(pow(spawnLocation.x - player2X, 2) + pow(spawnLocation.y - player2Y, 2));
-            
+
             if (dist1 >= safeZoneRadius && dist2 >= safeZoneRadius) {
                 foundSafePosition = true;
             }
-            
+
             attempts++;
         }
-        
+
         // If we couldn't find a safe edge position, use fallback positions
         if (!foundSafePosition) {
             // Use safe center positions as fallback
@@ -908,7 +914,7 @@ void GameController::spawnRocks(int waveNumber) {
                 spawnVelocity.y = -(float)(rand() % 10 + 5);
             }
         }
-        
+
         pRock->activate(spawnLocation, spawnVelocity);
         m_Rocks.push_back(pRock);
     }
@@ -918,7 +924,7 @@ void GameController::updateRocks(double frame) {
     for (int i = (int)m_Rocks.size() - 1; i >= 0; i--) {
         if (m_Rocks[i]) {
             m_Rocks[i]->update(frame);
-            
+
             // Remove destroyed rocks
             if (m_Rocks[i]->isDestroyed() && !m_Rocks[i]->isDustActive()) {
                 delete m_Rocks[i];
@@ -945,15 +951,15 @@ bool GameController::doesPlayerShootRock(int shot) {
             // Use SimpleRock properties for collision detection
             omegarace::Vector2f rockLocation = m_Rocks[rock]->position;
             float rockRadius = 20.0f; // SimpleRock collision radius
-            
+
             if (pThePlayer->getShotCircle(rockLocation, rockRadius, shot)) {
                 // Rock is destroyed - use proper method to synchronize all variables
                 m_Rocks[rock]->setDestroyed(true);
                 m_Rocks[rock]->triggerDustExplosion();
-                
+
                 // Play explosion sound through FMOD system
                 // AudioEngine::PlaySoundFile("RockHit");
-                
+
                 return true;
             }
         }
@@ -965,16 +971,16 @@ bool GameController::doesRockCollideWithPlayer(int rockIndex) {
     if (rockIndex < 0 || rockIndex >= (int)m_Rocks.size() || !m_Rocks[rockIndex]) {
         return false;
     }
-    
+
     omegarace::Rock* pRock = m_Rocks[rockIndex];
     if (!pRock->active || pRock->destroyed) {
         return false;
     }
-    
+
     // Use Rock properties for collision detection
     omegarace::Vector2f rockLocation = pRock->position;
     float rockRadius = 20.0f; // Rock collision radius
-    
+
     return pThePlayer->circlesIntersect(rockLocation, rockRadius);
 }
 
@@ -984,10 +990,10 @@ void GameController::spawnUFO(int waveNumber) {
     if (waveNumber < 4 || m_UFO->isActive()) {
         return;
     }
-    
+
     // Determine spawn side (random)
     bool fromLeft = (rand() % 2) == 0;
-    
+
     // Spawn location
     omegarace::Vector2f spawnLocation;
     if (fromLeft) {
@@ -996,16 +1002,17 @@ void GameController::spawnUFO(int waveNumber) {
         spawnLocation.x = (float)omegarace::Window::GetWindowSize().x + 50.0f; // Off right edge
     }
     spawnLocation.y = 100.0f + (rand() % 400); // Random vertical position
-    
+
     m_UFO->activate(spawnLocation, fromLeft);
 }
 
 void GameController::updateUFO(double frame) {
-    if (!m_UFO) return;
-    
+    if (!m_UFO)
+        return;
+
     // Update UFO spawn timer
     m_UFOSpawnTimer += frame;
-    
+
     // Try to spawn UFO periodically
     if (m_UFOSpawnTimer >= m_UFOSpawnInterval && !m_UFO->isActive()) {
         spawnUFO(m_CurrentWave);
@@ -1013,7 +1020,7 @@ void GameController::updateUFO(double frame) {
         // Randomize next spawn interval
         m_UFOSpawnInterval = 10.0f + ((rand() % 100) * 0.1f); // 10-20 seconds
     }
-    
+
     // Update UFO if active
     if (m_UFO->isActive()) {
         m_UFO->update(frame);
@@ -1030,23 +1037,23 @@ bool GameController::doesPlayerShootUFO(int shot) {
     if (!m_UFO || !m_UFO->isActive() || m_UFO->isDestroyed()) {
         return false;
     }
-    
+
     omegarace::Vector2f ufoLocation = m_UFO->getLocation();
     float ufoRadius = m_UFO->getRadius();
-    
+
     if (pThePlayer->getShotCircle(ufoLocation, ufoRadius, shot)) {
         // UFO is destroyed - trigger spectacular explosion
         m_UFO->setDestroyed(true);
         m_UFO->setActive(false);
         m_UFO->triggerExplosion(); // Trigger custom UFO explosion
-        
+
         // Award points for UFO destruction (high value)
         m_Score += 1500;
         checkBonusLife();
-        
+
         // Play explosion sound through FMOD system
         // AudioEngine::PlaySoundFile("UFOHit");
-        
+
         return true;
     }
     return false;
@@ -1056,19 +1063,19 @@ bool GameController::doesUFOCollideWithPlayer() {
     if (!m_UFO || !m_UFO->isActive() || m_UFO->isDestroyed()) {
         return false;
     }
-    
+
     omegarace::Vector2f ufoLocation = m_UFO->getLocation();
     float ufoRadius = m_UFO->getRadius();
-    
+
     return pThePlayer->circlesIntersect(ufoLocation, ufoRadius);
 }
 
 void GameController::onScreenSizeChanged() {
     // Reinitialize UI components that depend on screen size
     pTheBorders->initialize();
-    
+
     pStatus->initialize();
-    
+
     // Update inside border for player and enemies
     pThePlayer->setInsideBorder(pTheBorders->getInsideBorder());
     pTheEnemyController->setInisdeBorder(pTheBorders->getInsideBorder());
@@ -1080,27 +1087,27 @@ void GameController::completeWaveCleanup() {
         if (m_Rocks[i] && !m_Rocks[i]->isDestroyed()) {
             m_Rocks[i]->setDestroyed(true);
             m_Rocks[i]->triggerDustExplosion();
-            
+
             // Award small bonus points for automatic rock destruction
             m_Score += 100;
             checkBonusLife();
         }
     }
-    
+
     // Destroy UFO if active with explosion
     if (m_UFO && m_UFO->isActive() && !m_UFO->isDestroyed()) {
         m_UFO->setDestroyed(true);
         m_UFO->setActive(false);
         m_UFO->triggerExplosion();
-        
+
         // Award bonus points for automatic UFO destruction
         m_Score += 500;
         checkBonusLife();
     }
-    
+
     // Clear all lingering entity states
     resetAllEntityStates();
-    
+
     // Update status display to show new score
     pStatus->setScore(m_Score);
 }
@@ -1112,10 +1119,10 @@ void GameController::resetAllEntityStates() {
             pThePlayer->setShotActive(shot, false);
         }
     }
-    
+
     // Clear player vapor trail
     pThePlayer->clearVaporTrail();
-    
+
     // Reset LeadEnemy states
     if (pLeader) {
         // Deactivate LeadEnemy shot if active
@@ -1123,14 +1130,14 @@ void GameController::resetAllEntityStates() {
             pLeader->shotHitTarget(); // This deactivates the shot
         }
     }
-    
-    // Reset Fighter states  
+
+    // Reset Fighter states
     if (pFighter) {
         // Deactivate Fighter shot if active
         if (pFighter->getShotActive()) {
             pFighter->shotHitTarget(); // This deactivates the shot
         }
-        
+
         // Clear Fighter mines
         for (int mine = 0; mine < pFighter->getMineCount(); mine++) {
             if (pFighter->getMineActive(mine)) {
@@ -1138,7 +1145,7 @@ void GameController::resetAllEntityStates() {
             }
         }
     }
-    
+
     // Reset FollowEnemy states
     if (pFollower) {
         // Clear FollowEnemy mines
@@ -1148,22 +1155,22 @@ void GameController::resetAllEntityStates() {
             }
         }
     }
-    
+
     // Clear all enemy vapor trails (includes all enemy ships)
     pTheEnemyController->clearAllVaporTrails();
-    
+
     // Force reset UFO explosion states immediately (don't wait for natural fade)
     if (m_UFO) {
         m_UFO->forceResetExplosion();
     }
-    
+
     // Reset all rock dust explosions immediately
     for (size_t i = 0; i < m_Rocks.size(); i++) {
         if (m_Rocks[i]) {
             m_Rocks[i]->forceResetDustExplosion();
         }
     }
-    
+
     // Reset the warp grid background to clear distortion effects
     pTheBorders->resetGridBackground();
 }

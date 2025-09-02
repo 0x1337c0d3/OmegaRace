@@ -6,7 +6,7 @@
 namespace omegarace {
 
 class UFO : public Common {
-public:
+  public:
     UFO();
     ~UFO() = default;
 
@@ -15,25 +15,39 @@ public:
     void update(double frame);
     void draw();
     void changeDirection();
-    
+
     // Explosion system
     void triggerExplosion();
     void updateExplosion(double frame);
     void drawExplosion();
     void forceResetExplosion(); // NEW: Force immediate explosion reset
-    
-    // State getters/setters
-    bool isDestroyed() const { return destroyed; }
-    void setDestroyed(bool d) { destroyed = d; }
-    omegarace::Vector2f getLocation() const { return position; }
-    float getRadius() const { return radius; }
-    bool isActive() const { return active; }
-    void setActive(bool a) { active = a; }
-    bool isExplosionActive() const { return explosionActive; }
 
-private:
+    // State getters/setters
+    bool isDestroyed() const {
+        return destroyed;
+    }
+    void setDestroyed(bool d) {
+        destroyed = d;
+    }
+    omegarace::Vector2f getLocation() const {
+        return position;
+    }
+    float getRadius() const {
+        return radius;
+    }
+    bool isActive() const {
+        return active;
+    }
+    void setActive(bool a) {
+        active = a;
+    }
+    bool isExplosionActive() const {
+        return explosionActive;
+    }
+
+  private:
     void buildUFO();
-    
+
     // UFO properties
     omegarace::Vector2f position;
     omegarace::Vector2f velocity;
@@ -46,7 +60,7 @@ private:
     float directionTimer;
     float directionDuration;
     bool fromLeft;
-    
+
     // UFO Explosion system
     struct UFOExplosionParticle {
         omegarace::Vector2f position;

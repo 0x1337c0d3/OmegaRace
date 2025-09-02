@@ -44,8 +44,9 @@ Player::~Player() {
 void Player::initialize() {
     // Use static AudioEngine methods instead of instance methods
     AudioEngine::LoadSound("PlayerShot");
-    std::cout << "Player::initialize() - Loaded PlayerShot using static method, skipping other sounds for testing" << std::endl;
-    // AudioEngine::LoadSound("Thrust");  
+    std::cout << "Player::initialize() - Loaded PlayerShot using static method, skipping other sounds for testing"
+              << std::endl;
+    // AudioEngine::LoadSound("Thrust");
     // AudioEngine::LoadSound("PlayerHit");
     // AudioEngine::LoadSound("BorderHit");
 }

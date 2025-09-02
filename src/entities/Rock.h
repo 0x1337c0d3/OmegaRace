@@ -1,8 +1,8 @@
 #ifndef ROCK_H
-#define ROCK_H
-#include "Entity.h"
-#include "Explosion.h"
-#include "Window.h"
+#    define ROCK_H
+#    include "Entity.h"
+#    include "Explosion.h"
+#    include "Window.h"
 
 namespace omegarace {
 
@@ -14,7 +14,7 @@ class Rock : public Entity {
     Explosion* pExplosion;
     // Note: Using FMOD audio system instead of Mix_Chunk
 
-    void BuildRock();
+    void buildRock();
 
     // SimpleRock dust explosion system
     struct RockDustParticle {
@@ -46,10 +46,10 @@ class Rock : public Entity {
     Rock(std::mt19937& random);
     ~Rock();
 
-    void Initialize(std::mt19937& random);
-    void PauseTimer();
-    void UnpauseTimer();
-    
+    void initialize(std::mt19937& random);
+    void pauseTimer();
+    void unpauseTimer();
+
     // SimpleRock compatibility methods (actively used by GameController)
     void activate(Vector2f pos, Vector2f vel);
     void update(double frame);
@@ -59,11 +59,19 @@ class Rock : public Entity {
     void drawDustExplosion();
     void forceResetDustExplosion(); // NEW: Force immediate dust explosion reset
     void checkForEdge();
-    bool isDestroyed() const { return m_Distroyed; }
+    bool isDestroyed() const {
+        return m_Distroyed;
+    }
     void setDestroyed(bool d);
-    Vector2f getLocation() const { return m_Location; }
-    float getRadius() const { return m_Radius; }
-    bool isDustActive() const { return m_DustActive; }
+    Vector2f getLocation() const {
+        return m_Location;
+    }
+    float getRadius() const {
+        return m_Radius;
+    }
+    bool isDustActive() const {
+        return m_DustActive;
+    }
     Vector2f position; // Public access for compatibility
     Vector2f velocity; // Public access for compatibility
     bool destroyed;    // Public access for compatibility

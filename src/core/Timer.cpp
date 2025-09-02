@@ -29,7 +29,8 @@ void Timer::unpause() {
     if (mPaused) {
         mPaused = false;
         auto currentTime = std::chrono::high_resolution_clock::now();
-        mStartTime = currentTime - std::chrono::duration_cast<std::chrono::high_resolution_clock::duration>(mPausedDuration);
+        mStartTime =
+            currentTime - std::chrono::duration_cast<std::chrono::high_resolution_clock::duration>(mPausedDuration);
         mPausedDuration = std::chrono::duration<double>(0.0);
     }
 }
@@ -43,11 +44,11 @@ int Timer::restart() {
 int Timer::ticks() const {
     if (mStarted) {
         if (mPaused) {
-            return static_cast<int>(mPausedDuration.count() * 1000.0);  // Convert seconds to milliseconds
+            return static_cast<int>(mPausedDuration.count() * 1000.0); // Convert seconds to milliseconds
         } else {
             auto currentTime = std::chrono::high_resolution_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(currentTime - mStartTime);
-            return static_cast<int>(elapsed.count() * 1000.0);  // Convert seconds to milliseconds
+            return static_cast<int>(elapsed.count() * 1000.0); // Convert seconds to milliseconds
         }
     }
     return 0;

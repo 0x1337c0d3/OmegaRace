@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Window.h"
 #include "VapourTrail.h"
+#include "Window.h"
 
 namespace omegarace {
 
@@ -13,7 +13,7 @@ class Ship {
     void initialize();
     void update(float rotation, const Vector2f& location, float scale);
     void draw();
-    
+
     // Vapour trail control
     void setVapourTrailActive(bool active);
     void setVapourTrailColor(const Color& color);
@@ -25,7 +25,7 @@ class Ship {
     Line ShipLines[8];
     Line NewShipLines[8];
     Color m_ShipColor;
-    
+
     // Vapour trail effect
     std::unique_ptr<VapourTrail> m_VapourTrail;
 };

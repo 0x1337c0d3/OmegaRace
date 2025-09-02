@@ -24,7 +24,7 @@ void DoubleMine::draw() {
 void DoubleMine::mineDropped(const Vector2f& location) {
     m_Location = location;
     m_Active = true;
-    m_Radius = m_Scale * 3;  // Increased hit detection radius for easier shooting (was m_Scale * 2)
+    m_Radius = m_Scale * 3; // Increased hit detection radius for easier shooting (was m_Scale * 2)
 }
 
 } // namespace omegarace

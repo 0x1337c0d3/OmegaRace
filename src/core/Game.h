@@ -15,7 +15,7 @@ class Game {
     Game();
     ~Game();
 
-    int OnExecute();
+    int onExecute();
 
   private:
     std::unique_ptr<Timer> pTimer;
@@ -27,6 +27,12 @@ class Game {
 
     // Ticks last cycle/frame
     int m_LastTickTime;
+
+    // 60fps lock constants and variables
+    static constexpr double TARGET_FPS = 60.0;
+    static constexpr double TARGET_FRAME_TIME = 1.0 / TARGET_FPS; // ~0.01667 seconds per frame
+    double m_AccumulatedTime;
+    double m_LastUpdateTime;
 
     // Initialize application
     int onInit();
@@ -42,9 +48,6 @@ class Game {
 
     // Called to render the app.
     void onRender();
-
-    // Error logger (kept for compatibility, but Raylib uses TraceLog)
-    void logRaylibError(std::ostream& os, const std::string& msg);
 };
 
 } // namespace omegarace

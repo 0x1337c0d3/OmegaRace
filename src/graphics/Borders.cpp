@@ -5,18 +5,18 @@ namespace omegarace {
 
 Borders::Borders() {
     pTimer = std::make_unique<Timer>();
-    
+
     // Initialize Geometry Wars grid parameters
-    m_GridSpacing = 40;  // Distance between grid lines
+    m_GridSpacing = 40; // Distance between grid lines
     m_GridAnimationTime = 0.0f;
     m_DistortionRadius = 120.0f;  // Radius of player influence
     m_DistortionStrength = 15.0f; // How much the grid bends
-    
-    // Subtle blue-cyan grid color
+
+    // More subtle dark blue-cyan grid color (much more muted)
     m_GridColor.red = 0;
-    m_GridColor.green = 100;
-    m_GridColor.blue = 150;
-    m_GridColor.alpha = 120;
+    m_GridColor.green = 30; // Reduced from 100 to 30
+    m_GridColor.blue = 50;  // Reduced from 150 to 50
+    m_GridColor.alpha = 40; // Reduced from 120 to 40 for much more subtlety
 }
 
 Borders::~Borders() {
@@ -95,9 +95,9 @@ void Borders::initialize() {
 }
 
 void Borders::update() {
-    // Update grid animation
-    m_GridAnimationTime += 0.02f;  // Slow, subtle animation
-    
+    // Update grid animation (slower and more subtle)
+    m_GridAnimationTime += 0.008f; // Reduced from 0.02f to 0.008f for more subtle animation
+
     for (int line = 0; line < 4; line++) {
         if (pTimer->seconds() > insideLineTimers[line])
             insideLineOn[line] = false;
@@ -152,31 +152,31 @@ void Borders::drawElectricShimmerLine(Line* line, double endTime) {
     double currentTime = pTimer->seconds();
     double timeRemaining = endTime - currentTime;
     double totalDuration = 0.5; // Total effect duration
-    
+
     // Create pulsing intensity based on sine wave
-    double pulseSpeed = 15.0; // How fast the pulse oscillates
+    double pulseSpeed = 15.0;                                 // How fast the pulse oscillates
     double pulse = sin(currentTime * pulseSpeed) * 0.5 + 0.5; // 0 to 1
-    
+
     // Create electric blue/cyan colors with pulsing intensity
     Color electricCore;
-    electricCore.red = (int)(50 + pulse * 150);    // 50-200
-    electricCore.green = (int)(150 + pulse * 105); // 150-255  
-    electricCore.blue = 255;                       // Always full blue
+    electricCore.red = (int)(50 + pulse * 150);                      // 50-200
+    electricCore.green = (int)(150 + pulse * 105);                   // 150-255
+    electricCore.blue = 255;                                         // Always full blue
     electricCore.alpha = (int)(200 * timeRemaining / totalDuration); // Fade out over time
-    
+
     Color electricGlow;
-    electricGlow.red = (int)(100 + pulse * 100);   // 100-200
-    electricGlow.green = (int)(200 + pulse * 55);  // 200-255
+    electricGlow.red = (int)(100 + pulse * 100);  // 100-200
+    electricGlow.green = (int)(200 + pulse * 55); // 200-255
     electricGlow.blue = 255;
     electricGlow.alpha = (int)(150 * timeRemaining / totalDuration); // Fade out over time
-    
+
     // OPTIMIZED: Single layer electric effect for performance
-    float thickness = 3.0f + (float)(pulse * 2.0f); // 3-5 pixels
+    float thickness = 3.0f + (float)(pulse * 2.0f);      // 3-5 pixels
     float bloomIntensity = 0.4f + (float)(pulse * 0.2f); // 0.4-0.6 (reduced)
-    
+
     // Draw single electric layer
     Window::DrawVolumetricLineWithBloom(line, electricCore, thickness, bloomIntensity);
-    
+
     // Add random electric arcs along the line (sparks)
     if (pulse > 0.7) { // Only show sparks during peak intensity
         drawElectricArcs(line, electricCore);
@@ -186,42 +186,42 @@ void Borders::drawElectricShimmerLine(Line* line, double endTime) {
 void Borders::drawElectricArcs(Line* mainLine, const Color& arcColor) {
     // Calculate line properties
     Vector2i lineVec = mainLine->end - mainLine->start;
-    
+
     // Create 2-4 random arcs along the line
     int numArcs = Window::Random(2, 4);
-    
+
     for (int i = 0; i < numArcs; i++) {
         // Random position along the main line (0.0 to 1.0)
         float t = Window::Random(20, 80) / 100.0f; // 0.2 to 0.8 to avoid endpoints
-        
+
         // Calculate point on main line
         Vector2i arcStart;
         arcStart.x = mainLine->start.x + (int)(lineVec.x * t);
         arcStart.y = mainLine->start.y + (int)(lineVec.y * t);
-        
+
         // Create perpendicular vector for arc direction
         Vector2i perpVec;
         perpVec.x = -lineVec.y; // Perpendicular
         perpVec.y = lineVec.x;
-        
+
         // Normalize and scale the perpendicular vector
         float perpLength = sqrt((float)(perpVec.x * perpVec.x + perpVec.y * perpVec.y));
         if (perpLength > 0) {
             float arcLength = Window::Random(5, 15); // Random arc length
             perpVec.x = (int)(perpVec.x / perpLength * arcLength);
             perpVec.y = (int)(perpVec.y / perpLength * arcLength);
-            
+
             // Random direction (up or down from line)
             if (Window::Random(0, 1)) {
                 perpVec.x = -perpVec.x;
                 perpVec.y = -perpVec.y;
             }
-            
+
             // Create the arc line
             Line arcLine;
             arcLine.start = arcStart;
             arcLine.end = arcStart + perpVec;
-            
+
             // Draw the electric arc
             Color sparkColor = arcColor;
             sparkColor.alpha = sparkColor.alpha / 2; // Dimmer than main line
@@ -244,128 +244,132 @@ void Borders::drawBackground(const std::vector<DistortionSource>& distortionSour
 
 void Borders::drawGeometryWarsGrid(const Vector2f& playerPosition) {
     Vector2i windowSize = Window::GetWindowSize();
-    
+
     // Draw vertical grid lines
     for (int x = 0; x < windowSize.x + m_GridSpacing; x += m_GridSpacing) {
-        for (int y = 0; y < windowSize.y; y += m_GridSpacing / 4) {  // More segments for smoother curves
-            if (y + m_GridSpacing / 4 >= windowSize.y) continue;
-            
+        for (int y = 0; y < windowSize.y; y += m_GridSpacing / 4) { // More segments for smoother curves
+            if (y + m_GridSpacing / 4 >= windowSize.y)
+                continue;
+
             // Calculate distorted positions
             float distortion1 = calculateGridDistortion((float)x, (float)y, playerPosition);
             float distortion2 = calculateGridDistortion((float)x, (float)(y + m_GridSpacing / 4), playerPosition);
-            
-            // Add subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.3f;
-            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 0.3f;
-            
+
+            // Add very subtle wave animation
+            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.1f; // Reduced from 0.3f to 0.1f
+            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 0.1f;
+
             Line gridLine;
             gridLine.start = Vector2i(x + (int)(distortion1 + wave1), y);
             gridLine.end = Vector2i(x + (int)(distortion2 + wave2), y + m_GridSpacing / 4);
-            
+
             // Fade lines at edges
             float edgeFade = 1.0f;
             if (x < m_GridSpacing * 2 || x > windowSize.x - m_GridSpacing * 2) {
                 edgeFade = 0.3f;
             }
-            
+
             Color fadeColor = m_GridColor;
             fadeColor.alpha = (int)(fadeColor.alpha * edgeFade);
-            
-            Window::DrawLine(&gridLine, fadeColor);
+
+            Window::DrawVolumetricLine(&gridLine, fadeColor);
         }
     }
-    
+
     // Draw horizontal grid lines
     for (int y = 0; y < windowSize.y + m_GridSpacing; y += m_GridSpacing) {
-        for (int x = 0; x < windowSize.x; x += m_GridSpacing / 4) {  // More segments for smoother curves
-            if (x + m_GridSpacing / 4 >= windowSize.x) continue;
-            
+        for (int x = 0; x < windowSize.x; x += m_GridSpacing / 4) { // More segments for smoother curves
+            if (x + m_GridSpacing / 4 >= windowSize.x)
+                continue;
+
             // Calculate distorted positions
             float distortion1 = calculateGridDistortion((float)x, (float)y, playerPosition);
             float distortion2 = calculateGridDistortion((float)(x + m_GridSpacing / 4), (float)y, playerPosition);
-            
-            // Add subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.3f;
-            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 0.3f;
-            
+
+            // Add very subtle wave animation
+            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.1f; // Reduced from 0.3f to 0.1f
+            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 0.1f;
+
             Line gridLine;
             gridLine.start = Vector2i(x, y + (int)(distortion1 + wave1));
             gridLine.end = Vector2i(x + m_GridSpacing / 4, y + (int)(distortion2 + wave2));
-            
+
             // Fade lines at edges
             float edgeFade = 1.0f;
             if (y < m_GridSpacing * 2 || y > windowSize.y - m_GridSpacing * 2) {
                 edgeFade = 0.3f;
             }
-            
+
             Color fadeColor = m_GridColor;
             fadeColor.alpha = (int)(fadeColor.alpha * edgeFade);
-            
-            Window::DrawLine(&gridLine, fadeColor);
+
+            Window::DrawVolumetricLine(&gridLine, fadeColor);
         }
     }
 }
 
 void Borders::drawGeometryWarsGrid(const std::vector<DistortionSource>& distortionSources) {
     Vector2i windowSize = Window::GetWindowSize();
-    
+
     // Draw vertical grid lines
     for (int x = 0; x < windowSize.x + m_GridSpacing; x += m_GridSpacing) {
-        for (int y = 0; y < windowSize.y; y += m_GridSpacing / 4) {  // More segments for smoother curves
-            if (y + m_GridSpacing / 4 >= windowSize.y) continue;
-            
+        for (int y = 0; y < windowSize.y; y += m_GridSpacing / 4) { // More segments for smoother curves
+            if (y + m_GridSpacing / 4 >= windowSize.y)
+                continue;
+
             // Calculate distorted positions from multiple sources
             float distortion1 = calculateGridDistortion((float)x, (float)y, distortionSources);
             float distortion2 = calculateGridDistortion((float)x, (float)(y + m_GridSpacing / 4), distortionSources);
-            
-            // Add subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.3f;
-            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 0.3f;
-            
+
+            // Add very subtle wave animation
+            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.1f; // Reduced from 0.3f to 0.1f
+            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 0.1f;
+
             Line gridLine;
             gridLine.start = Vector2i(x + (int)(distortion1 + wave1), y);
             gridLine.end = Vector2i(x + (int)(distortion2 + wave2), y + m_GridSpacing / 4);
-            
+
             // Fade lines at edges
             float edgeFade = 1.0f;
             if (x < m_GridSpacing * 2 || x > windowSize.x - m_GridSpacing * 2) {
                 edgeFade = 0.3f;
             }
-            
+
             Color fadeColor = m_GridColor;
             fadeColor.alpha = (int)(fadeColor.alpha * edgeFade);
-            
-            Window::DrawLine(&gridLine, fadeColor);
+
+            Window::DrawVolumetricLine(&gridLine, fadeColor);
         }
     }
-    
+
     // Draw horizontal grid lines
     for (int y = 0; y < windowSize.y + m_GridSpacing; y += m_GridSpacing) {
-        for (int x = 0; x < windowSize.x; x += m_GridSpacing / 4) {  // More segments for smoother curves
-            if (x + m_GridSpacing / 4 >= windowSize.x) continue;
-            
+        for (int x = 0; x < windowSize.x; x += m_GridSpacing / 4) { // More segments for smoother curves
+            if (x + m_GridSpacing / 4 >= windowSize.x)
+                continue;
+
             // Calculate distorted positions from multiple sources
             float distortion1 = calculateGridDistortion((float)x, (float)y, distortionSources);
             float distortion2 = calculateGridDistortion((float)(x + m_GridSpacing / 4), (float)y, distortionSources);
-            
-            // Add subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.3f;
-            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 0.3f;
-            
+
+            // Add very subtle wave animation
+            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.1f; // Reduced from 0.3f to 0.1f
+            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 0.1f;
+
             Line gridLine;
             gridLine.start = Vector2i(x, y + (int)(distortion1 + wave1));
             gridLine.end = Vector2i(x + m_GridSpacing / 4, y + (int)(distortion2 + wave2));
-            
+
             // Fade lines at edges
             float edgeFade = 1.0f;
             if (y < m_GridSpacing * 2 || y > windowSize.y - m_GridSpacing * 2) {
                 edgeFade = 0.3f;
             }
-            
+
             Color fadeColor = m_GridColor;
             fadeColor.alpha = (int)(fadeColor.alpha * edgeFade);
-            
-            Window::DrawLine(&gridLine, fadeColor);
+
+            Window::DrawVolumetricLine(&gridLine, fadeColor);
         }
     }
 }
@@ -375,59 +379,61 @@ float Borders::calculateGridDistortion(float x, float y, const Vector2f& playerP
     float dx = x - playerPos.x;
     float dy = y - playerPos.y;
     float distance = sqrt(dx * dx + dy * dy);
-    
+
     if (distance > m_DistortionRadius) {
-        return 0.0f;  // No distortion beyond radius
+        return 0.0f; // No distortion beyond radius
     }
-    
+
     // Create distortion that falls off with distance
     float distortionFactor = 1.0f - (distance / m_DistortionRadius);
-    distortionFactor = distortionFactor * distortionFactor;  // Smooth falloff
-    
+    distortionFactor = distortionFactor * distortionFactor; // Smooth falloff
+
     // Calculate distortion direction (away from player)
-    if (distance < 1.0f) distance = 1.0f;  // Avoid division by zero
+    if (distance < 1.0f)
+        distance = 1.0f; // Avoid division by zero
     float dirX = dx / distance;
-    
+
     // Apply distortion
     return dirX * m_DistortionStrength * distortionFactor;
 }
 
 float Borders::calculateGridDistortion(float x, float y, const std::vector<DistortionSource>& sources) {
     float totalDistortion = 0.0f;
-    
+
     for (const auto& source : sources) {
         // Calculate distance from this grid point to distortion source
         float dx = x - source.position.x;
         float dy = y - source.position.y;
         float distance = sqrt(dx * dx + dy * dy);
-        
+
         // Use source-specific radius if provided, otherwise use default
         float radius = (source.radius > 0.0f) ? source.radius : m_DistortionRadius;
-        
+
         if (distance > radius) {
-            continue;  // No distortion beyond radius for this source
+            continue; // No distortion beyond radius for this source
         }
-        
+
         // Create distortion that falls off with distance
         float distortionFactor = 1.0f - (distance / radius);
-        distortionFactor = distortionFactor * distortionFactor;  // Smooth falloff
-        
+        distortionFactor = distortionFactor * distortionFactor; // Smooth falloff
+
         // Calculate distortion direction (away from source)
-        if (distance < 1.0f) distance = 1.0f;  // Avoid division by zero
+        if (distance < 1.0f)
+            distance = 1.0f; // Avoid division by zero
         float dirX = dx / distance;
-        
+
         // Apply distortion with source-specific strength
         float sourceStrength = m_DistortionStrength * source.strength;
         totalDistortion += dirX * sourceStrength * distortionFactor;
     }
-    
+
     return totalDistortion;
 }
 
 void Borders::resetGridBackground() {
     // Reset grid animation time to eliminate any accumulated distortion effects
     m_GridAnimationTime = 0.0f;
-    
+
     // Reset grid properties to initial state to clear any residual distortion
     m_DistortionRadius = 120.0f;  // Reset to default radius
     m_DistortionStrength = 15.0f; // Reset to default strength

@@ -4,14 +4,14 @@
 #include "Letter.h"
 #include "Number.h"
 #include "PlayerShip.h"
-#include <fstream>
 #include <cstdlib>
+#include <fstream>
 
 namespace omegarace {
 
 class StatusDisplay : Common {
   public:
-      // Application state
+    // Application state
     enum GAME_STATE { APP_START = 0, APP_INSTRUCTIONS = 1, APP_GAMEOVER = 2, APP_PLAYING = 3 };
 
     StatusDisplay();

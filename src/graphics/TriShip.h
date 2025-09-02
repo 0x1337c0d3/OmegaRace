@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Window.h"
 #include "VapourTrail.h"
+#include "Window.h"
 
 namespace omegarace {
 
@@ -20,8 +20,8 @@ class TriShip {
     void draw();
     void setThreatLevel(float level); // 0.0 to 1.0 - affects menacing appearance
     void setAggressiveMode(bool aggressive);
-    void setMode(TriShipMode mode);   // Set visual mode (enemy, mine, double mine)
-    void clearVaporTrail(); // NEW: Clear vapor trail
+    void setMode(TriShipMode mode); // Set visual mode (enemy, mine, double mine)
+    void clearVaporTrail();         // NEW: Clear vapor trail
 
   private:
     void initilize();
@@ -39,7 +39,7 @@ class TriShip {
     VapourTrail m_VapourTrail;
     Vector2f m_CurrentLocation;
     float m_CurrentScale;
-    
+
     // Menacing visual enhancements
     float m_ThreatLevel;
     float m_PulseIntensity;
@@ -48,7 +48,7 @@ class TriShip {
     Color m_ThreatColor;
     Color m_CoreColor;
     TriShipMode m_Mode;
-    
+
     // Mine-specific properties
     float m_MineWarningIntensity;
     Color m_WarningColor;

@@ -5,8 +5,7 @@ namespace omegarace {
 /*
  * INITIALIZATION
  */
-void Logger::Init()
-{
+void Logger::Init() {
     // REVIEW: This could be leaking memory!
     auto t = std::time(nullptr);
     auto tm = *std::localtime(&t);
@@ -28,16 +27,15 @@ void Logger::Init()
 /*
  * INFO
  */
-void Logger::Info(std::string msg)
-{
+void Logger::Info(std::string msg) {
 #ifdef SHOW_CONSOLE
-#if __linux__ || __APPLE__
+#    if __linux__ || __APPLE__
     std::cout << COLOR_BLUE << INFO_STR << msg << RESET << std::endl;
-#else
+#    else
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), COLOR_BLUE);
     std::cout << INFO_STR << msg << std::endl;
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), COLOR_WHITE);
-#endif
+#    endif
     WriteToLogFile(INFO_STR, msg);
 #endif
 }
@@ -45,16 +43,15 @@ void Logger::Info(std::string msg)
 /*
  * WARNINGS
  */
-void Logger::Warn(std::string msg)
-{
+void Logger::Warn(std::string msg) {
 #ifdef SHOW_CONSOLE
-#if __linux__ || __APPLE__
+#    if __linux__ || __APPLE__
     std::cout << COLOR_YELLOW << WARN_STR << msg << RESET << std::endl;
-#else
+#    else
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), COLOR_YELLOW);
     std::cout << WARN_STR << msg << std::endl;
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), COLOR_WHITE);
-#endif
+#    endif
     WriteToLogFile(WARN_STR, msg);
 #endif
 }
@@ -62,16 +59,15 @@ void Logger::Warn(std::string msg)
 /*
  * ERRORS
  */
-void Logger::Error(std::string errMsg, std::string errParam)
-{
+void Logger::Error(std::string errMsg, std::string errParam) {
 #ifdef SHOW_CONSOLE
-#if __linux__ || __APPLE__
+#    if __linux__ || __APPLE__
     std::cout << COLOR_RED << ERROR_STR << errMsg << " -> " << errParam << RESET << std::endl;
-#else
+#    else
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), COLOR_RED);
     std::cout << ERROR_STR << errMsg << " -> " << errParam << std::endl;
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), COLOR_WHITE);
-#endif
+#    endif
     WriteToLogFile(ERROR_STR, errMsg);
 #endif
 }
@@ -79,16 +75,15 @@ void Logger::Error(std::string errMsg, std::string errParam)
 /*
  * DEBUG
  */
-void Logger::Debug(std::string msg)
-{
+void Logger::Debug(std::string msg) {
 #ifdef SHOW_CONSOLE
-#if __linux__ || __APPLE__
+#    if __linux__ || __APPLE__
     std::cout << COLOR_PURPLE << DEBUG_STR << msg << RESET << std::endl;
-#else
+#    else
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), COLOR_PURPLE);
     std::cout << DEBUG_STR << msg << std::endl;
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), COLOR_WHITE);
-#endif
+#    endif
     WriteToLogFile(DEBUG_STR, msg);
 #endif
 }
@@ -96,8 +91,7 @@ void Logger::Debug(std::string msg)
 /*
  * WRITE TO FILE
  */
-void Logger::WriteToLogFile(std::string type, std::string msg)
-{
+void Logger::WriteToLogFile(std::string type, std::string msg) {
     // REVIEW: This could be leaking memory!
     auto t = std::time(nullptr);
     auto tm = *std::localtime(&t);

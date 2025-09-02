@@ -46,18 +46,18 @@ StatusDisplay::StatusDisplay() {
     m_ShipColor.alpha = 255;
 
     pLetter->setColor(m_ShipColor);
-    
+
     // Create Application Support directory path for high scores
     std::string homeDir = getenv("HOME");
     std::string appSupportDir = homeDir + "/Library/Application Support/Omega Race";
-    
+
     // Create directory if it doesn't exist
     std::string createDirCommand = "mkdir -p \"" + appSupportDir + "\"";
     system(createDirCommand.c_str());
-    
+
     // Set the high score file path
     m_HighScoreFilePath = appSupportDir + "/highscore";
-    
+
     // Load high score from file
     loadHighScore();
 }
@@ -67,10 +67,10 @@ StatusDisplay::~StatusDisplay() {
 
 void StatusDisplay::initialize() {
     Vector2i windowSize = Window::GetWindowSize();
-    
+
     // Recalculate all screen-dependent positions based on current window size
     m_ShipLocation = Vector2f(windowSize.x * 0.20, windowSize.y * 0.40);
-    
+
     m_GameOverLocation.x = windowSize.x * 0.38;
     m_GameOverLocation.y = windowSize.y / 2 - 30;
     m_InstructionsLocation.x = windowSize.x * 0.25;
@@ -83,7 +83,7 @@ void StatusDisplay::initialize() {
     m_ScoreLocation = m_HiScoreLocation - Vector2i(0, 60);
     m_ScoreTextLocation = m_ScoreLocation - Vector2i(145, 30);
     m_HiScoreTextLocation = m_HiScoreLocation - Vector2i(120, 30);
-    
+
     pNumber->initializeNumberLine();
     pLetter->initializeLetterLine();
 }
@@ -92,23 +92,23 @@ void StatusDisplay::draw() {
     int size = 8;
 
     switch (m_State) {
-    case APP_START:
-        drawTitle();
-        break;
-    case APP_INSTRUCTIONS:
-        drawInstructions();
-        break;
-    case APP_GAMEOVER:
-        drawGameOver();
-        break;
-    case APP_PLAYING:
-        pLetter->processString(m_ScoreText[0], m_HiScoreTextLocation, size);
-        pNumber->processNumber(m_HighScore, m_HiScoreLocation, size);
-        pLetter->processString(m_ScoreText[1], m_ScoreTextLocation, size);
-        pNumber->processNumber(m_Score, m_ScoreLocation, size);
+        case APP_START:
+            drawTitle();
+            break;
+        case APP_INSTRUCTIONS:
+            drawInstructions();
+            break;
+        case APP_GAMEOVER:
+            drawGameOver();
+            break;
+        case APP_PLAYING:
+            pLetter->processString(m_ScoreText[0], m_HiScoreTextLocation, size);
+            pNumber->processNumber(m_HighScore, m_HiScoreLocation, size);
+            pLetter->processString(m_ScoreText[1], m_ScoreTextLocation, size);
+            pNumber->processNumber(m_Score, m_ScoreLocation, size);
 
-        drawShips();
-        break;
+            drawShips();
+            break;
     }
 }
 

@@ -84,7 +84,7 @@ void LeadEnemy::resetShotTimer() {
 void LeadEnemy::clearVaporTrail() {
     // Clear Enemy base class vapor trail
     Enemy::clearVaporTrail();
-    
+
     // Clear TriShip vapor trail
     if (pTriShip) {
         pTriShip->clearVaporTrail();

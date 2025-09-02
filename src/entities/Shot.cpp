@@ -54,27 +54,27 @@ void Shot::draw() {
         // Create a laser bolt with trail effect
         Vector2f currentPos = m_Location;
         Vector2f previousPos = m_Location - (m_Velocity * 0.1f); // Trail based on velocity
-        
+
         // Create a line from previous position to current position for motion blur
         Line trailLine;
         trailLine.start = Vector2i((int)previousPos.x, (int)previousPos.y);
         trailLine.end = Vector2i((int)currentPos.x, (int)currentPos.y);
-        
+
         // Draw the main laser bolt with volumetric effect
         Color laserCore = m_InsideColor;
         laserCore.alpha = 255;
-        
+
         // Draw trail with decreasing alpha
         Color trailColor = m_InsideColor;
         trailColor.alpha = 128;
-        
+
         // Use volumetric line for the trail
         Window::DrawVolumetricLineWithBloom(&trailLine, trailColor, 2.0f, 0.6f);
-        
+
         // Draw the bright core
         Vector2i coreLocation = Vector2i((int)currentPos.x, (int)currentPos.y);
         Window::DrawPoint(&coreLocation, laserCore);
-        
+
         // Add a small cross pattern for the core
         Vector2i crossPoint;
         crossPoint = coreLocation + Vector2i(1, 0);

@@ -10,7 +10,7 @@ FollowEnemy::FollowEnemy() {
     pTimer = std::make_unique<Timer>();
     pTimer->start();
     resetTimer();
-    
+
     // Initialize menacing properties
     m_AggressionLevel = 0.5f;
     m_DistanceToPlayer = 1000.0f;
@@ -24,11 +24,11 @@ FollowEnemy::~FollowEnemy() {
 void FollowEnemy::update(double Frame) {
     if (m_Active) {
         Enemy::update(Frame);
-        
+
         // Update aggression based on proximity to player
         updateAggressionLevel();
         updateThreatDisplay();
-        
+
         pTriShip->update(m_Location, m_Scale);
         timeToLayMine();
     }
@@ -53,7 +53,7 @@ void FollowEnemy::updateAggressionLevel() {
     // Calculate distance to player
     Vector2f diff = m_Location - m_PlayerPosition;
     m_DistanceToPlayer = sqrt(diff.x * diff.x + diff.y * diff.y);
-    
+
     // Closer = more aggressive (threat level increases as distance decreases)
     float maxThreatDistance = 200.0f;
     if (m_DistanceToPlayer < maxThreatDistance) {
@@ -63,7 +63,7 @@ void FollowEnemy::updateAggressionLevel() {
         m_AggressionLevel = 0.3f; // Base menace level
         m_InAttackMode = false;
     }
-    
+
     // Increase aggression when low on mines (desperation)
     if (m_Mines.size() < 3) {
         m_AggressionLevel = fmin(1.0f, m_AggressionLevel + 0.3f);
@@ -112,7 +112,7 @@ void FollowEnemy::timerUnpause() {
 void FollowEnemy::clearVaporTrail() {
     // Clear Enemy base class vapor trail
     Enemy::clearVaporTrail();
-    
+
     // Clear TriShip vapor trail
     if (pTriShip) {
         pTriShip->clearVaporTrail();

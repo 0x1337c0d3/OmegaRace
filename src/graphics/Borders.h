@@ -9,11 +9,12 @@ namespace omegarace {
 
 struct DistortionSource {
     Vector2f position;
-    float strength;     // Multiplier for distortion strength
-    float radius;       // Override radius, or use default if 0
-    
-    DistortionSource(const Vector2f& pos, float str = 1.0f, float rad = 0.0f) 
-        : position(pos), strength(str), radius(rad) {}
+    float strength; // Multiplier for distortion strength
+    float radius;   // Override radius, or use default if 0
+
+    DistortionSource(const Vector2f& pos, float str = 1.0f, float rad = 0.0f)
+        : position(pos), strength(str), radius(rad) {
+    }
 };
 
 class Borders {

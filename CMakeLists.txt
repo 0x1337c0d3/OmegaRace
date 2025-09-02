@@ -14,6 +14,8 @@ add_compile_definitions(VMATH_NAMESPACE=omegarace)
 # Platform detection
 if(APPLE)
     set(PLATFORM_MACOS TRUE)
+    # Build as universal binary for macOS (both arm64 and x86_64)
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures" FORCE)
 elseif(WIN32)
     set(PLATFORM_WINDOWS TRUE)
 elseif(UNIX)
@@ -40,15 +42,27 @@ endif()
 # Find packages
 find_package(PkgConfig REQUIRED)
 
-# SDL2 for window management and input
-find_package(SDL2 REQUIRED)
-if(NOT SDL2_FOUND)
-    message(STATUS "SDL2 not found, trying pkg-config")
-    pkg_check_modules(SDL2 REQUIRED sdl2)
-endif()
-
-# BGFX for advanced rendering
+# Use FetchContent for all major dependencies for easier cross-platform distribution
 include(FetchContent)
+
+# SDL2 for window management and input - using FetchContent for better distribution
+FetchContent_Declare(
+    SDL2
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG release-2.30.6  # Use a stable release tag
+)
+
+# Configure SDL2 options before making it available
+option(SDL2_DISABLE_INSTALL "Disable SDL2 installation" ON)
+option(SDL_SHARED "Build SDL2 as shared library" ON)
+option(SDL_STATIC "Build SDL2 as static library" OFF)
+option(SDL_TEST "Build SDL2 test programs" OFF)
+set(SDL2_DISABLE_INSTALL ON CACHE BOOL "Disable SDL2 installation" FORCE)
+set(SDL_SHARED ON CACHE BOOL "Build SDL2 as shared library" FORCE)
+set(SDL_STATIC OFF CACHE BOOL "Build SDL2 as static library" FORCE)
+set(SDL_TEST OFF CACHE BOOL "Build SDL2 test programs" FORCE)
+
+FetchContent_MakeAvailable(SDL2)
 
 # Configure BGFX to only build what we need - disable examples but enable tools for shader compilation
 # These must be set BEFORE FetchContent_Declare to take effect properly
@@ -151,12 +165,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     src/graphics
     src/audio
     include
-    ${SDL2_INCLUDE_DIRS}
 )
 
-# Link libraries - SDL2 for windowing, BGFX for rendering
+# Link libraries - SDL2 and BGFX via FetchContent
 target_link_libraries(${PROJECT_NAME} PRIVATE 
-    ${SDL2_LIBRARIES}
+    SDL2::SDL2
     bgfx
     bimg
     bx
@@ -228,6 +241,14 @@ if(PLATFORM_MACOS)
             "${CMAKE_CURRENT_SOURCE_DIR}/third-party/fmod/osx/lib/libfmodstudio.dylib"
             $<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Frameworks/
         COMMENT "Copying FMOD dylibs to app bundle"
+    )
+
+    # Copy SDL2 dylib from FetchContent to app bundle
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different 
+            "$<TARGET_FILE:SDL2::SDL2>" 
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Frameworks/"
+        COMMENT "Copying SDL2 library to app bundle"
     )
     
 elseif(PLATFORM_WINDOWS)

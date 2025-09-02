@@ -1,19 +1,18 @@
 #pragma once
 
+#include "Types.h"
 #include <fmod.hpp>
 #include <fmod_studio.hpp>
-#include <string>
-#include <map>
-#include <vector>
-#include <math.h>
 #include <iostream>
-#include "Types.h"
+#include <map>
+#include <math.h>
+#include <string>
+#include <vector>
 
 namespace omegarace {
 
 // using the pimpl idiom
-struct CAudioEngineImpl
-{
+struct CAudioEngineImpl {
     CAudioEngineImpl();
     ~CAudioEngineImpl();
 
@@ -35,9 +34,8 @@ struct CAudioEngineImpl
     ChannelMap mChannels;
 };
 
-class AudioEngine
-{
-public:
+class AudioEngine {
+  public:
     static void Init();
     static void Update();
     static void Shutdown();
@@ -45,7 +43,8 @@ public:
 
     static void LoadSound(const std::string& sSoundName, bool b3d = false, bool bLooping = false, bool bStream = false);
     static void UnLoadSound(const std::string& sSoundName);
-    static int PlaySoundFile(const std::string& sSoundName, const Vector3f& vPosition = Vector3f{0,0,0}, float fVolumedB = 0.0f);
+    static int PlaySoundFile(const std::string& sSoundName, const Vector3f& vPosition = Vector3f{0, 0, 0},
+                             float fVolumedB = 0.0f);
     static bool IsPlaying(int nChannelId);
 
     static void SetChannel3dPosition(int nChannelId, const Vector3f& vPosition);
@@ -60,7 +59,7 @@ public:
     static void GetEventParameter(const std::string& sEventName, const std::string& sEventParameter, float* fParameter);
     static void SetEventParameter(const std::string& sEventName, const std::string& sParameterName, float fValue);
 
-    static void Set3dListenerAndOrientation(const Vector3f& vPos = Vector3f{0,0,0}, float fVolumedB = 0.0f);
+    static void Set3dListenerAndOrientation(const Vector3f& vPos = Vector3f{0, 0, 0}, float fVolumedB = 0.0f);
     static void StopChannel(int nChannelId);
     void StopAllChannels();
 

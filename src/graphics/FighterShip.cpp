@@ -29,7 +29,7 @@ void FighterShip::update(const Vector2f& location, float rotation) {
 
 void FighterShip::draw() {
     for (int line = 0; line < 2; line++) {
-        Window::DrawLine(&newShipLines[line], m_ShipColor);
+        Window::DrawVolumetricLine(&newShipLines[line], m_ShipColor);
     }
 }
 

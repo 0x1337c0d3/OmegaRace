@@ -24,13 +24,13 @@ class ExplosionLine : public Entity {
     float m_Alpha;
     Color m_Color;
     Line m_Line;
-    
+
     // Enhanced explosion properties
-    float m_ExplosionPhase;      // 0.0 to 1.0 explosion progress
-    float m_InitialThickness;    // Starting thickness
-    float m_MaxThickness;        // Peak thickness during explosion
-    float m_CurrentThickness;    // Current animated thickness
-    
+    float m_ExplosionPhase;   // 0.0 to 1.0 explosion progress
+    float m_InitialThickness; // Starting thickness
+    float m_MaxThickness;     // Peak thickness during explosion
+    float m_CurrentThickness; // Current animated thickness
+
     // Helper methods for enhanced effects
     Color calculateExplosionColor();
     void drawExplosionSparks();
