@@ -2,8 +2,12 @@
 
 #include "Types.h"
 
-// Raylib includes  
-#include <raylib.h>
+// SDL2 for window management and input
+#include <SDL2/SDL.h>
+
+// BGFX for advanced cross-platform rendering
+#include <bgfx/bgfx.h>
+#include <bgfx/platform.h>
 
 #include <iostream>
 #include <memory>
@@ -14,26 +18,31 @@
 #include <stdlib.h>
 #include <string>
 #include <time.h>
+#include <chrono>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 namespace omegarace {
 
-// Line struct is now defined in Types.h
-// Color struct is now defined in Types.h
+// Forward declarations
+struct DistortionSource;
 
 class Window {
   public:
-    static void Init(int width, int height, std::string title = "Raylib Window");
+    static void Init(int width, int height, std::string title = "OmegaRace");
     static void Quit();
-    static void Present();  // Kept for compatibility, but largely unused in Raylib
+    static void BeginFrame();
+    static void EndFrame();
     static Rectangle Box();
-    static void logRaylibError(std::ostream& os, const std::string& msg);
+    static void logError(std::ostream& os, const std::string& msg);
     
-    // Basic drawing functions (converted from SDL)
+    // Basic drawing functions (placeholder implementations for now)
     static void DrawLine(Line* LineLocation, const Color& LineColor);
     static void DrawPoint(Vector2i* PointLocation, const Color& PointColor);
     static void DrawRect(const Rectangle* RectangleLocation, const Color& RectColor);
     
-    // NEW: Enhanced line drawing with volumetric effects
+    // Enhanced line drawing with volumetric effects (placeholder for now)
     static void DrawVolumetricLine(Line* LineLocation, const Color& LineColor, float thickness = 3.0f);
     static void DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineColor, 
                                            float thickness = 3.0f, float bloomIntensity = 0.5f);
@@ -42,56 +51,91 @@ class Window {
     static int Random(int Min, int Max);
 
     static std::string dataPath();
+    
+    // Controller support
     static int findController();
-    static void updateControllerDetection();  // Periodic controller detection
-    static int mControllerIndex;  // Changed from SDL_GameController*
+    static void updateControllerDetection();
+    static int mControllerIndex;
 
-    // NEW: Raylib-specific functions
-    static void BeginDrawing();
-    static void EndDrawing();
+    // Window management
     static bool ShouldClose();
     
-    // NEW: Shader support for advanced effects
+    // Shader support for advanced effects (placeholder)
     static void LoadBloomShader(const std::string& fragmentShaderPath);
     static void BeginBloomMode();
     static void EndBloomMode();
     
-    // NEW: Enhanced controller support
+    // Controller input
     static bool IsControllerButtonPressed(int button);
     static bool IsControllerButtonDown(int button);
-    static ::Vector2 GetControllerLeftStick();
-    static ::Vector2 GetControllerRightStick();
+    static Vector2f GetControllerLeftStick();
+    static Vector2f GetControllerRightStick();
     static float GetControllerLeftTrigger();
     static float GetControllerRightTrigger();
     static bool IsControllerConnected();
     static std::string GetControllerName();
-    
-    // NEW: FPS display
-    static void DrawFPS(int x = 10, int y = 10);
-    static void PrintFPS();  // Console output
-    
-    // NEW: Full screen warp effect for wave transitions
+        
+    // Full screen warp effect for wave transitions (placeholder)
     static void DrawFullScreenWarp(float intensity = 1.0f, float time = 0.0f);
     static void BeginWarpTransition();
     static void EndWarpTransition();
     
-    // NEW: Fullscreen support
-    static bool CheckForFullscreenToggle();  // Returns true if screen size changed
+    // Fullscreen support
+    static bool CheckForFullscreenToggle();
     static void ToggleFullscreen();
     static bool IsFullscreen();
 
+    // Input functions - Raylib-compatible API using SDL2
+    static bool IsKeyPressed(int key);
+    static bool IsKeyDown(int key);
+    static bool IsGamepadButtonPressed(int gamepad, int button);
+    static bool IsGamepadButtonDown(int gamepad, int button);
+    static float GetGamepadAxisMovement(int gamepad, int axis);
+
   private:
-    static Rectangle mBox;  // Changed from SDL_Rect
-    static bool mIsFullscreen;  // Track fullscreen state
-    static int mWindowedWidth;  // Store windowed dimensions
+    // SDL2 state
+    static SDL_Window* mWindow;
+    static SDL_Renderer* mRenderer;
+    static Rectangle mBox;
+    static bool mIsFullscreen;
+    static int mWindowedWidth;
     static int mWindowedHeight;
+    
+    // BGFX rendering state
+    static bgfx::ViewId mMainView;
+    static bgfx::ViewId mBloomView;
+    static bgfx::ProgramHandle mBloomProgram;
+    static bgfx::ProgramHandle mLineProgram;
+    static bgfx::FrameBufferHandle mBloomFrameBuffer;
+    static bgfx::TextureHandle mBloomTexture;
+    static bgfx::UniformHandle mBloomParams;
+    static bgfx::ProgramHandle m_program;
     
     // Scaling for aspect ratio preservation
     static float mRenderScale;
     static Vector2i mRenderOffset;
     static constexpr int GAME_WIDTH = 1024;
     static constexpr int GAME_HEIGHT = 768;
-    // Note: No need for window/renderer pointers - Raylib manages these internally
+    
+    // Frame timing
+    static std::chrono::high_resolution_clock::time_point mLastFrameTime;
+    static double mDeltaTime;
+    
+    // Input state
+    static bool mShouldClose;
+    static bool mKeysPressed[512]; // SDL_NUM_SCANCODES is typically 512
+    
+    static bool mShouldQuit;
+
+    // BGFX initialization and management
+    static bool InitializeBGFX();
+    static void SetupRenderStates();
+    static void CreateBloomResources();
+    static void ShutdownBGFX();
+    
+    // Shader loading functions
+    static bgfx::ProgramHandle loadProgram(const char* vsName, const char* fsName);
+    static bgfx::ShaderHandle loadShader(const char* name);
 };
 
 } // namespace omegarace

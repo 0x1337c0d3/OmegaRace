@@ -43,30 +43,30 @@ public:
     static void Shutdown();
     static int ErrorCheck(FMOD_RESULT result);
 
-    void LoadSound(const std::string& sSoundName, bool b3d = false, bool bLooping = false, bool bStream = false);
-    void UnLoadSound(const std::string& sSoundName);
-    int PlaySoundFile(const std::string& sSoundName, const Vector3f& vPosition = Vector3f{0,0,0}, float fVolumedB = 0.0f);
-    bool IsPlaying(int nChannelId);
+    static void LoadSound(const std::string& sSoundName, bool b3d = false, bool bLooping = false, bool bStream = false);
+    static void UnLoadSound(const std::string& sSoundName);
+    static int PlaySoundFile(const std::string& sSoundName, const Vector3f& vPosition = Vector3f{0,0,0}, float fVolumedB = 0.0f);
+    static bool IsPlaying(int nChannelId);
 
-    void SetChannel3dPosition(int nChannelId, const Vector3f& vPosition);
-    void SetChannelVolume(int nChannelId, float fVolumedB);
+    static void SetChannel3dPosition(int nChannelId, const Vector3f& vPosition);
+    static void SetChannelVolume(int nChannelId, float fVolumedB);
 
-    void LoadBank(const std::string& sBankName, FMOD_STUDIO_LOAD_BANK_FLAGS pflags);
+    static void LoadBank(const std::string& sBankName, FMOD_STUDIO_LOAD_BANK_FLAGS pflags);
 
-    void LoadEvent(const std::string& sEventName);
-    void PlayEvent(const std::string& sEventName);
-    void StopEvent(const std::string& sEventName, bool bImmediate = false);
-    bool IsEventPlaying(const std::string& sEventName);
-    void GetEventParameter(const std::string& sEventName, const std::string& sEventParameter, float* fParameter);
-    void SetEventParameter(const std::string& sEventName, const std::string& sParameterName, float fValue);
+    static void LoadEvent(const std::string& sEventName);
+    static void PlayEvent(const std::string& sEventName);
+    static void StopEvent(const std::string& sEventName, bool bImmediate = false);
+    static bool IsEventPlaying(const std::string& sEventName);
+    static void GetEventParameter(const std::string& sEventName, const std::string& sEventParameter, float* fParameter);
+    static void SetEventParameter(const std::string& sEventName, const std::string& sParameterName, float fValue);
 
-    void Set3dListenerAndOrientation(const Vector3f& vPos = Vector3f{0,0,0}, float fVolumedB = 0.0f);
-    void StopChannel(int nChannelId);
+    static void Set3dListenerAndOrientation(const Vector3f& vPos = Vector3f{0,0,0}, float fVolumedB = 0.0f);
+    static void StopChannel(int nChannelId);
     void StopAllChannels();
 
-    float dbToVolume(float fdB);
-    float VolumeTodB(float fVolume);
-    FMOD_VECTOR VectorToFmod(const Vector3f& vPosition);
+    static float dbToVolume(float fdB);
+    static float VolumeTodB(float fVolume);
+    static FMOD_VECTOR VectorToFmod(const Vector3f& vPosition);
 };
 
 } // namespace omegarace

@@ -1,11 +1,12 @@
 # Omega Race
 
-A modern recreation of the classic 1981 arcade game Omega Race, built with C++ and Raylib for macOS.
+A modern recreation of the classic 1981 arcade game Omega Race, built with C++ and BGFX for cross-platform performance.
 
 ![Game Version](https://img.shields.io/badge/version-1.0-blue.svg)
-![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)
+![Platform](https://img.shields.io/badge/platform-Cross--Platform-lightgrey.svg)
 ![Language](https://img.shields.io/badge/language-C++-blue.svg)
-![Framework](https://img.shields.io/badge/framework-Raylib-green.svg)
+![Graphics](https://img.shields.io/badge/graphics-BGFX-red.svg)
+![Framework](https://img.shields.io/badge/framework-SDL2-green.svg)
 
 ## 🎮 About
 
@@ -50,7 +51,8 @@ Survive waves of enemies while scoring points by destroying ships and avoiding m
 
 ### Built With
 - **C++17** - Modern C++ with smart pointers and RAII
-- **Raylib** - Cross-platform game development library
+- **BGFX** - Cross-platform rendering library with Metal/DirectX/Vulkan/OpenGL backends
+- **SDL2** - Cross-platform window management and input handling
 - **FMOD** - Professional audio engine for sound effects
 - **Vector Mathematics** - Custom math library for precise physics
 - **Entity Component System** - Modular game object architecture
@@ -105,10 +107,11 @@ src/
 
 ### Dependencies
 - **CMake 3.15+** - Modern build system
-- **Raylib** - Graphics and input handling
+- **BGFX** - Cross-platform rendering library (automatically fetched)
+- **SDL2** - Window management and input handling
 - **FMOD** - Audio engine for sound effects
-- **C++17 Compiler** - GCC, Clang, or MSVC
-- **Platform**: macOS 14.6+, Windows 10+, or Linux
+- **C++17 Compiler** - GCC, Clang, or MSVC with C++17 support
+- **Platform**: macOS 11.0+, Windows 10+, or Linux (Ubuntu 20.04+)
 
 ### Build System
 The project uses **CMake** for cross-platform building:
@@ -127,36 +130,85 @@ cmake --build . -j$(nproc)
 ```
 
 ### Prerequisites
-- Xcode 16.0 or later
-- macOS 14.6 or later
-- Raylib (installed via Homebrew)
-- FMOD SDK (included in ThirdParty/)
+- **CMake 3.15+** - Build system
+- **SDL2** - Available via package manager (Homebrew on macOS, apt on Ubuntu, vcpkg on Windows)
+- **FMOD SDK** - Included in third-party/ directory
+- **Metal/DirectX/Vulkan/OpenGL** - Graphics API support (varies by platform)
+- **C++17 compatible compiler** - GCC 7+, Clang 5+, MSVC 2017+
 
 ### Quick Build
 ```bash
-# Build Release version and create DMG
-./build_release_dmg.sh
+# Clone the repository
+git clone https://github.com/0x1337c0d3/OmegaRace.git
+cd OmegaRace
 
-# Or build just the Release version
-./build_release.sh
+# Build (Release mode by default)
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . -j$(nproc)
+
+# Run the game
+./Debug/OmegaRace.app/Contents/MacOS/OmegaRace  # macOS
+./OmegaRace                                      # Linux/Windows
+```
+
+### Platform-Specific Setup
+
+#### macOS
+```bash
+# Install dependencies via Homebrew
+brew install cmake sdl2
+
+# Build and run
+mkdir build && cd build
+cmake ..
+cmake --build .
+open Debug/OmegaRace.app
+```
+
+#### Ubuntu/Linux
+```bash
+# Install dependencies
+sudo apt update
+sudo apt install cmake libsdl2-dev build-essential
+
+# Build and run
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+./OmegaRace
+```
+
+#### Windows (with Visual Studio)
+```powershell
+# Install dependencies via vcpkg
+vcpkg install sdl2:x64-windows
+
+# Build
+mkdir build && cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build . --config Release
 ```
 
 ### Manual Build
 ```bash
-# Open in Xcode
-open Applications/OmegaRace/OmegaRace.xcodeproj
+# Configure build system
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 
-# Or build from command line
-cd Applications/OmegaRace
-xcodebuild -project OmegaRace.xcodeproj -configuration Release
+# Build the project
+cmake --build build --config Release
+
+# Alternative: Use build scripts (macOS)
+./scripts/build.sh Release
 ```
 
 ### Build Scripts
-The project includes automated build scripts:
+The project includes automated build scripts for various platforms:
 
-- **`build_release.sh`** - Simple Release build with optional DMG creation
-- **`build_release_dmg.sh`** - Complete build and distribution pipeline
-- See `BUILD_README.md` for detailed build documentation
+- **`scripts/build.sh`** - Cross-platform build script with configuration options
+- **`build_release.sh`** - macOS-specific Release build with optional DMG creation  
+- **`build_release_dmg.sh`** - Complete macOS build and distribution pipeline
+- See `BUILD_README.md` for detailed macOS build documentation
 
 ## 📦 Distribution
 
@@ -183,13 +235,15 @@ Audio files are managed through FMOD with support for:
 
 ## 🎨 Graphics
 
-Modern vector-style graphics featuring:
-- Smooth line rendering with anti-aliasing
-- Dynamic color effects and intensity
-- Particle effects for explosions
-- Enhanced visual feedback
-- Retina display optimization
-- Smooth 60fps gameplay
+Modern vector-style graphics powered by BGFX featuring:
+- **Cross-platform rendering** - Metal (macOS), DirectX (Windows), Vulkan/OpenGL (Linux)
+- **High-performance line rendering** - Hardware-accelerated vector graphics
+- **Dynamic bloom effects** - Volumetric lighting and glow effects
+- **Particle systems** - Advanced explosion and trail effects
+- **Smooth anti-aliasing** - Clean line rendering at all resolutions
+- **Retina/High-DPI support** - Crisp visuals on modern displays
+- **60+ FPS gameplay** - Optimized rendering pipeline
+- **Real-time effects** - Dynamic lighting and screen-space effects
 
 ## 🔧 Configuration
 
@@ -203,22 +257,27 @@ Game settings and configuration:
 ## 📋 System Requirements
 
 ### Minimum Requirements
-- macOS 14.6 or later
-- 2GB RAM
-- Metal-compatible graphics
-- 100MB available storage
+- **OS**: macOS 11.0+, Windows 10+, or Ubuntu 20.04+
+- **CPU**: 64-bit processor (Intel/AMD x64 or ARM64)
+- **RAM**: 2GB available memory
+- **Graphics**: DirectX 11, OpenGL 3.3, Metal, or Vulkan support
+- **Storage**: 200MB available space
 
 ### Recommended
-- macOS 14.6 or later
-- 4GB RAM
-- Dedicated graphics card
-- Game controller for optimal experience
+- **OS**: macOS 12.0+, Windows 11+, or Ubuntu 22.04+
+- **CPU**: Multi-core processor (quad-core recommended)
+- **RAM**: 4GB available memory
+- **Graphics**: Dedicated GPU with modern driver support
+- **Input**: Game controller for optimal experience
+- **Display**: High-DPI/Retina display for enhanced visuals
 
 ## 🐛 Known Issues
 
-- Performance may vary on older hardware
-- Some visual effects require Metal support
-- Game controller support limited to DirectionalGamepad profile
+- Performance may vary on older hardware without modern graphics API support
+- Shader compilation requires compatible graphics drivers
+- Some visual effects require DirectX 11/Metal/Vulkan support
+- Game controller support optimized for DirectionalGamepad profile
+- First launch may take longer due to shader compilation
 
 ## 🤝 Contributing
 

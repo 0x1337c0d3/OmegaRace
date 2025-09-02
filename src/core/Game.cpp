@@ -1,8 +1,10 @@
 #include "Game.h"
+#include <iostream>
 
 namespace omegarace {
 
 Game::Game() : running(false) {
+    std::cout << "Game constructor called" << std::endl;
 }
 
 Game::~Game() {
@@ -10,13 +12,16 @@ Game::~Game() {
 }
 
 int Game::onInit() {
+    std::cout << "Game::onInit() called" << std::endl;
     int screenWidth = 1024;
     int screenHeight = 768;
 
     try {
+        std::cout << "Initializing Window..." << std::endl;
         Window::Init(screenWidth, screenHeight, "Omega Race");
+        std::cout << "Window initialized successfully" << std::endl;
     } catch (const std::runtime_error& error) {
-        Window::logRaylibError(std::cout, "Window OnInit error code: " + std::string(error.what()));
+        Window::logError(std::cout, "Window OnInit error: " + std::string(error.what()));
         Window::Quit();
         return APP_FAILED;
     }
@@ -28,22 +33,38 @@ void Game::onCleanup() {
 }
 
 int Game::OnExecute() {
+    std::cout << "Game::OnExecute() called" << std::endl;
+    
     int status = onInit();
     if (status != APP_OK) {
+        std::cout << "onInit() failed with status: " << status << std::endl;
         return status;
     }
+    std::cout << "onInit() completed successfully" << std::endl;
 
     pTimer = std::make_unique<Timer>();
     pGameController = std::make_unique<GameController>();
+    std::cout << "Created Timer and GameController" << std::endl;
+    
     pGameController->initialize();
+    std::cout << "GameController initialized" << std::endl;
+    
     pTimer->start();
+    std::cout << "Timer started" << std::endl;
 
     running = true;
+    std::cout << "Entering main loop" << std::endl;
 
     m_LastTickTime = pTimer->ticks();
 
-    // Raylib main loop - no need for SDL event polling
+    // BGFX main loop
+    int frameCount = 0;
     while (running && !Window::ShouldClose()) {
+        frameCount++;
+        
+        // Process SDL events and update input state FIRST
+        Window::BeginFrame();
+        
         handleInput();  // Process input every frame
         
         // Check for controller connections periodically
@@ -54,20 +75,15 @@ int Game::OnExecute() {
             // Screen size changed - update UI components
             pGameController->onScreenSizeChanged();
         }
-        
+
         onUpdate();
         std::this_thread::yield();
         
-        Window::BeginDrawing();
         onRender();
-        Window::EndDrawing();
-        
-        // Optional: Print FPS to console every second
-        Window::PrintFPS();
-        
+        Window::EndFrame();
+                
         std::this_thread::yield();
     }
-
     return status;
 }
 
@@ -84,11 +100,6 @@ void Game::onUpdate() {
 
 void Game::onRender() {
     pGameController->draw();
-    
-    // Display FPS counter in top-left corner
-    Window::DrawFPS(10, 10);
-    
-    // Note: Window::Present() is not needed - EndDrawing() handles this
 }
 
 void Game::handleInput() {
@@ -96,7 +107,7 @@ void Game::handleInput() {
     // Raylib automatically handles controller detection, so less complex than SDL
     
     // Handle pause toggle (P key)
-    if (IsKeyPressed(KEY_P)) {
+    if (Window::IsKeyPressed(KEY_P)) {
         pGameController->onPause(pTimer->paused());
         
         if (pTimer->paused())
@@ -106,12 +117,12 @@ void Game::handleInput() {
     }
     
     // Handle fullscreen toggle (F11 key)
-    if (IsKeyPressed(KEY_F11)) {
+    if (Window::IsKeyPressed(KEY_F11)) {
         Window::ToggleFullscreen();
     }
     
     // Handle quit (Escape key)
-    if (IsKeyPressed(KEY_ESCAPE)) {
+    if (Window::IsKeyPressed(KEY_ESCAPE)) {
         running = false;
     }
     

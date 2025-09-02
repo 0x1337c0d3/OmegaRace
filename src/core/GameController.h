@@ -69,7 +69,6 @@ class GameController : Common {
     FollowEnemy* pFollower = nullptr;
     LeadEnemy* pLeader = nullptr;
 
-    AudioEngine audio;
     std::unique_ptr<Player> pThePlayer;
     std::unique_ptr<Borders> pTheBorders;
     std::unique_ptr<EnemyController> pTheEnemyController;

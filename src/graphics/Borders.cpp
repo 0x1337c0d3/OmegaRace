@@ -110,7 +110,7 @@ void Borders::update() {
 }
 
 void Borders::draw() {
-    ::Rectangle r;
+    Rectangle r;
     r.x = insideBorder.x;
     r.y = insideBorder.y;
     r.width = insideBorder.w;
@@ -255,8 +255,8 @@ void Borders::drawGeometryWarsGrid(const Vector2f& playerPosition) {
             float distortion2 = calculateGridDistortion((float)x, (float)(y + m_GridSpacing / 4), playerPosition);
             
             // Add subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 2.0f;
-            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 2.0f;
+            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.3f;
+            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 0.3f;
             
             Line gridLine;
             gridLine.start = Vector2i(x + (int)(distortion1 + wave1), y);
@@ -285,8 +285,8 @@ void Borders::drawGeometryWarsGrid(const Vector2f& playerPosition) {
             float distortion2 = calculateGridDistortion((float)(x + m_GridSpacing / 4), (float)y, playerPosition);
             
             // Add subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 2.0f;
-            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 2.0f;
+            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.3f;
+            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 0.3f;
             
             Line gridLine;
             gridLine.start = Vector2i(x, y + (int)(distortion1 + wave1));
@@ -319,8 +319,8 @@ void Borders::drawGeometryWarsGrid(const std::vector<DistortionSource>& distorti
             float distortion2 = calculateGridDistortion((float)x, (float)(y + m_GridSpacing / 4), distortionSources);
             
             // Add subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 2.0f;
-            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 2.0f;
+            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.3f;
+            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 0.3f;
             
             Line gridLine;
             gridLine.start = Vector2i(x + (int)(distortion1 + wave1), y);
@@ -349,8 +349,8 @@ void Borders::drawGeometryWarsGrid(const std::vector<DistortionSource>& distorti
             float distortion2 = calculateGridDistortion((float)(x + m_GridSpacing / 4), (float)y, distortionSources);
             
             // Add subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 2.0f;
-            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 2.0f;
+            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.3f;
+            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 0.3f;
             
             Line gridLine;
             gridLine.start = Vector2i(x, y + (int)(distortion1 + wave1));

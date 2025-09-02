@@ -2,13 +2,14 @@
 
 namespace omegarace {
 
-Timer::Timer() : mStartTime(0.0), mPausedTime(0.0), mStarted(false), mPaused(false) {
+Timer::Timer() : mStartTime(), mPausedDuration(0.0), mStarted(false), mPaused(false) {
 }
 
 void Timer::start() {
     mStarted = true;
     mPaused = false;
-    mStartTime = GetTime();  // Raylib's GetTime() returns seconds as double
+    mStartTime = std::chrono::high_resolution_clock::now();
+    mPausedDuration = std::chrono::duration<double>(0.0);
 }
 
 void Timer::stop() {
@@ -19,15 +20,17 @@ void Timer::stop() {
 void Timer::pause() {
     if (mStarted && !mPaused) {
         mPaused = true;
-        mPausedTime = GetTime() - mStartTime;
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        mPausedDuration = std::chrono::duration_cast<std::chrono::duration<double>>(currentTime - mStartTime);
     }
 }
 
 void Timer::unpause() {
     if (mPaused) {
         mPaused = false;
-        mStartTime = GetTime() - mPausedTime;
-        mPausedTime = 0.0;
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        mStartTime = currentTime - std::chrono::duration_cast<std::chrono::high_resolution_clock::duration>(mPausedDuration);
+        mPausedDuration = std::chrono::duration<double>(0.0);
     }
 }
 
@@ -39,23 +42,27 @@ int Timer::restart() {
 
 int Timer::ticks() const {
     if (mStarted) {
-        if (mPaused)
-            return (int)(mPausedTime * 1000.0);  // Convert seconds to milliseconds
-        else
-            return (int)((GetTime() - mStartTime) * 1000.0);  // Convert seconds to milliseconds
+        if (mPaused) {
+            return static_cast<int>(mPausedDuration.count() * 1000.0);  // Convert seconds to milliseconds
+        } else {
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(currentTime - mStartTime);
+            return static_cast<int>(elapsed.count() * 1000.0);  // Convert seconds to milliseconds
+        }
     }
-
     return 0;
 }
 
 double Timer::seconds() const {
     if (mStarted) {
-        if (mPaused)
-            return mPausedTime;
-        else
-            return GetTime() - mStartTime;
+        if (mPaused) {
+            return mPausedDuration.count();
+        } else {
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(currentTime - mStartTime);
+            return elapsed.count();
+        }
     }
-
     return 0.0;
 }
 

@@ -71,7 +71,6 @@ class Player : public Entity {
     double m_ExplosiontTimerAmount;
     SDL_Rect m_InsideBorder;
 
-    AudioEngine audio;
     int m_ThrustChannel;
     std::unique_ptr<Timer> pTimer;
     std::unique_ptr<PlayerShot> pShots[40];

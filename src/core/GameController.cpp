@@ -11,10 +11,23 @@ static StatusDisplay::GAME_STATE states[3] = {
 };
 
 GameController::GameController() {
+    std::cout << "GameController constructor starting..." << std::endl;
+    
+    std::cout << "Creating Player..." << std::endl;
     pThePlayer = std::make_unique<Player>();
+    std::cout << "Player created successfully" << std::endl;
+    
+    std::cout << "Creating Borders..." << std::endl;
     pTheBorders = std::make_unique<Borders>();
+    std::cout << "Borders created successfully" << std::endl;
+    
+    std::cout << "Creating EnemyController..." << std::endl;
     pTheEnemyController = std::make_unique<EnemyController>();
+    std::cout << "EnemyController created successfully" << std::endl;
+    
+    std::cout << "Creating StatusDisplay..." << std::endl;
     pStatus = std::make_unique<StatusDisplay>();
+    std::cout << "StatusDisplay created successfully" << std::endl;
     
     m_Score = 0;
     m_PlayerShips = 4; // Start with 4 extra lives (5 total including current life)
@@ -74,17 +87,17 @@ void GameController::initialize() {
     pLeader = pTheEnemyController->getLeadPointer();
     pStatus->initialize();
 
-    audio.LoadBank("Master.bank", 0);
-    audio.LoadBank("Master.strings.bank", 0);
-    audio.PlayEvent("event:/Horizontal Crime Demo");
+    AudioEngine::LoadBank("Master.bank", 0);
+    AudioEngine::LoadBank("Master.strings.bank", 0);
+    AudioEngine::PlayEvent("event:/Horizontal Crime Demo");
 
-    audio.LoadSound("EnemyHit");
-    audio.LoadSound("EnemyHit");
-    audio.LoadSound("LeadEnemyHit");
-    audio.LoadSound("FollowerHit");
-    audio.LoadSound("FighterHit");
-    audio.LoadSound("MineHit");
-    audio.LoadSound("PlayerHit");
+    AudioEngine::LoadSound("EnemyHit");
+    AudioEngine::LoadSound("EnemyHit");
+    AudioEngine::LoadSound("LeadEnemyHit");
+    AudioEngine::LoadSound("FollowerHit");
+    AudioEngine::LoadSound("FighterHit");
+    AudioEngine::LoadSound("MineHit");
+    AudioEngine::LoadSound("PlayerHit");
     
     // Initialize rock system (sound will be handled through FMOD like other sounds)
 }
@@ -252,7 +265,7 @@ void GameController::newGame() {
     m_NextBonusLifeThreshold = 50000;
     pStatus->setShip(m_PlayerShips);
     m_EndOfWave = false;
-    audio.PlayEvent("event:/Horizontal Souls");
+    AudioEngine::PlayEvent("event:/Horizontal Souls");
 }
 
 void GameController::handleInput() {
@@ -263,7 +276,7 @@ void GameController::handleInput() {
     bool thrust = false;
     
     // New game controls work even during warp transition
-    if (IsKeyPressed(KEY_N)) {
+    if (Window::IsKeyPressed(KEY_N)) {
         newGame();
     }
     
@@ -278,22 +291,22 @@ void GameController::handleInput() {
     
     // === KEYBOARD INPUT ===
     // Turn left (A key or Left arrow)
-    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
+    if (Window::IsKeyDown(KEY_A) || Window::IsKeyDown(KEY_LEFT)) {
         turnLeft = true;
     }
     
     // Turn right (D key or Right arrow)
-    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
+    if (Window::IsKeyDown(KEY_D) || Window::IsKeyDown(KEY_RIGHT)) {
         turnRight = true;
     }
     
     // Thrust (W key or Up arrow)
-    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
+    if (Window::IsKeyDown(KEY_W) || Window::IsKeyDown(KEY_UP)) {
         thrust = true;
     }
     
     // Fire (S key, Space, or Left Ctrl) - use IsKeyPressed for single shot
-    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_LEFT_CONTROL)) {
+    if (Window::IsKeyPressed(KEY_S) || Window::IsKeyPressed(KEY_SPACE) || Window::IsKeyPressed(KEY_LEFT_CONTROL)) {
         pThePlayer->fireButtonPressed();
     }
     
@@ -304,18 +317,18 @@ void GameController::handleInput() {
         
         // === GAME CONTROLS (work during warp) ===
         // Start button (Options) for new game
-        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {  // Options/Start
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {  // Options/Start
             newGame();
         }
         
         // Share button for pause (alternative)
-        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) {  // Share/Select
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) {  // Share/Select
             // Could add pause functionality here if needed
         }
         
         // === TURNING CONTROLS ===
         // Method 1: Left analog stick (preferred for smooth control)
-        float leftStickX = GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_LEFT_X);
+        float leftStickX = Window::GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_LEFT_X);
         const float STICK_DEADZONE = 0.2f;
         
         // Analog stick turning (smooth)
@@ -326,43 +339,43 @@ void GameController::handleInput() {
         }
         
         // Method 2: D-pad for precise turning (PS4 D-pad)
-        if (IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) {  // D-pad Left
+        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) {  // D-pad Left
             turnLeft = true;  // Add to keyboard input
         }
-        if (IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) {  // D-pad Right
+        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) {  // D-pad Right
             turnRight = true;  // Add to keyboard input
         }
         
         // === THRUST CONTROLS ===
         // Method 1: R1 button - PRIMARY
-        if (IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) {  // R1 button
+        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) {  // R1 button
             thrust = true;  // Add to keyboard input
         }
         
         // Method 2: Right analog stick up
-        float rightStickY = GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_RIGHT_Y);
+        float rightStickY = Window::GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_RIGHT_Y);
         if (rightStickY < -STICK_DEADZONE) {  // Up on right stick
             thrust = true;  // Add to keyboard input
         }
                 
         // === FIRE CONTROLS ===
         // Method 1: X button (PS4 X = bottom face button) - PRIMARY
-        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {  // X button
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {  // X button
             pThePlayer->fireButtonPressed();
         }
         
         // Method 2: Square button (PS4 Square = left face button)
-        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {  // Square
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {  // Square
             pThePlayer->fireButtonPressed();
         }
         
         // Method 3: Circle button (PS4 Circle = right face button)  
-        if (IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {  // Circle
+        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {  // Circle
             thrust = true;  // Add to keyboard input
         }
         
         // Triangle button for special actions
-        if (IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_UP)) {  // Triangle
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_UP)) {  // Triangle
             // Reserved for future features
         }
     }
@@ -387,51 +400,51 @@ void GameController::checkCollisions() {
     for (int shot = 0; shot < pThePlayer->getNumberOfShots(); shot++) {
         if (pThePlayer->getShotActive(shot)) {
             if (doesPlayerShotEnemy(shot)) {
-                audio.PlaySoundFile("EnemyHit");
+                AudioEngine::PlaySoundFile("EnemyHit");
                 m_Score += 1000;
                 checkBonusLife();
             }
 
             if (doesPlayerShootLeadEnemy(shot)) {
-                audio.PlaySoundFile("LeadEnemyHit");
+                AudioEngine::PlaySoundFile("LeadEnemyHit");
                 m_Score += 1500;
                 checkBonusLife();
             }
 
             if (doesPlayerShootFollowEnemy(shot)) {
-                audio.PlaySoundFile("FollowerHit");
+                AudioEngine::PlaySoundFile("FollowerHit");
                 m_Score += 1500;
                 checkBonusLife();
             }
 
             if (doesPlayerShootFighter(shot)) {
-                audio.PlaySoundFile("FighterHit");
+                AudioEngine::PlaySoundFile("FighterHit");
                 m_Score += 2500;
                 checkBonusLife();
             }
 
             if (doesPlayerShootFollowMine(shot)) {
-                audio.PlaySoundFile("MineHit");
+                AudioEngine::PlaySoundFile("MineHit");
                 m_Score += 350;
                 checkBonusLife();
             }
 
             if (doesPlayerShootFighterMine(shot)) {
-                audio.PlaySoundFile("MineHit");
+                AudioEngine::PlaySoundFile("MineHit");
                 m_Score += 500;
                 checkBonusLife();
             }
             
             // Check rock shooting
             if (doesPlayerShootRock(shot)) {
-                audio.PlaySoundFile("MineHit");
+                AudioEngine::PlaySoundFile("MineHit");
                 m_Score += 750;
                 checkBonusLife();
             }
             
             // Check UFO shooting
             if (doesPlayerShootUFO(shot)) {
-                audio.PlaySoundFile("Bonus");
+                AudioEngine::PlaySoundFile("Bonus");
                 // Score is already added in doesPlayerShootUFO method
             }
         }
@@ -442,7 +455,7 @@ void GameController::checkCollisions() {
         for (int ship = 0; ship < pTheEnemyController->getEnemyCount(); ship++) {
             if (pTheEnemyController->getEnemyActive(ship)) {
                 if (doesEnemyCollideWithPlayer(ship)) {
-                    audio.PlaySoundFile("PlayerHit");
+                    AudioEngine::PlaySoundFile("PlayerHit");
                     if (playerHit()) {
                         return; // Exit collision checking since player is respawning
                     }
@@ -452,7 +465,7 @@ void GameController::checkCollisions() {
 
         if (pLeader->getActive()) {
             if (doesLeadCollideWithPlayer()) {
-                audio.PlaySoundFile("PlayerHit");
+                AudioEngine::PlaySoundFile("PlayerHit");
                 if (playerHit()) {
                     return; // Exit collision checking since player is respawning
                 }
@@ -461,7 +474,7 @@ void GameController::checkCollisions() {
 
         if (pFollower->getActive()) {
             if (doesFollowCollideWithPlayer()) {
-                audio.PlaySoundFile("PlayerHit");
+                AudioEngine::PlaySoundFile("PlayerHit");
                 if (playerHit()) {
                     return; // Exit collision checking since player is respawning
                 }
@@ -470,7 +483,7 @@ void GameController::checkCollisions() {
 
         if (pFighter->getActive()) {
             if (doesFighterCollideWithPlayer()) {
-                audio.PlaySoundFile("PlayerHit");
+                AudioEngine::PlaySoundFile("PlayerHit");
                 if (playerHit()) {
                     return; // Exit collision checking since player is respawning
                 }
@@ -481,7 +494,7 @@ void GameController::checkCollisions() {
             for (int mine = 0; mine < pFollower->getMineCount(); mine++) {
                 if (pFollower->getMineActive(mine)) {
                     if (doesFollowMineHitPalyer(mine)) {
-                        audio.PlaySoundFile("PlayerHit");
+                        AudioEngine::PlaySoundFile("PlayerHit");
                         if (playerHit()) {
                             return; // Exit collision checking since player is respawning
                         }
@@ -494,7 +507,7 @@ void GameController::checkCollisions() {
             for (int mine = 0; mine < pFighter->getMineCount(); mine++) {
                 if (pFighter->getMineActive(mine)) {
                     if (doesFighterMineHitPlayer(mine)) {
-                        audio.PlaySoundFile("PlayerHit");
+                        AudioEngine::PlaySoundFile("PlayerHit");
                         if (playerHit()) {
                             return; // Exit collision checking since player is respawning
                         }
@@ -505,7 +518,7 @@ void GameController::checkCollisions() {
 
         if (pLeader->getShotActive()) {
             if (doesLeadShootPlayer()) {
-                audio.PlaySoundFile("PlayerHit");
+                AudioEngine::PlaySoundFile("PlayerHit");
                 if (playerHit()) {
                     return; // Exit collision checking since player is respawning
                 }
@@ -514,7 +527,7 @@ void GameController::checkCollisions() {
 
         if (pFighter->getShotActive()) {
             if (doesFighterShootPlayer()) {
-                audio.PlaySoundFile("PlayerHit");
+                AudioEngine::PlaySoundFile("PlayerHit");
                 if (playerHit()) {
                     return; // Exit collision checking since player is respawning
                 }
@@ -528,7 +541,7 @@ void GameController::checkCollisions() {
                     // Destroy the rock to prevent multiple hits
                     m_Rocks[rock]->setDestroyed(true);
                     m_Rocks[rock]->triggerDustExplosion();
-                    audio.PlaySoundFile("PlayerHit");
+                    AudioEngine::PlaySoundFile("PlayerHit");
                     if (playerHit()) {
                         // Player was hit and still has lives remaining
                         return; // Exit collision checking since player is respawning
@@ -541,7 +554,7 @@ void GameController::checkCollisions() {
         if (doesUFOCollideWithPlayer()) {
             // Destroy the UFO to prevent multiple hits
             m_UFO->triggerExplosion();
-            audio.PlaySoundFile("PlayerHit");
+            AudioEngine::PlaySoundFile("PlayerHit");
             if (playerHit()) {
                 // Player was hit and still has lives remaining
                 return; // Exit collision checking since player is respawning
@@ -558,7 +571,7 @@ void GameController::checkBonusLife() {
         pStatus->setShip(m_PlayerShips);
         
         // Play bonus life sound (same as UFO bonus sound for now)
-        audio.PlaySoundFile("Bonus");
+        AudioEngine::PlaySoundFile("Bonus");
         
         // Set next bonus life threshold (every 50,000 points)
         m_NextBonusLifeThreshold += 50000;
@@ -939,7 +952,7 @@ bool GameController::doesPlayerShootRock(int shot) {
                 m_Rocks[rock]->triggerDustExplosion();
                 
                 // Play explosion sound through FMOD system
-                // audio.PlaySoundFile("RockHit");
+                // AudioEngine::PlaySoundFile("RockHit");
                 
                 return true;
             }
@@ -1032,7 +1045,7 @@ bool GameController::doesPlayerShootUFO(int shot) {
         checkBonusLife();
         
         // Play explosion sound through FMOD system
-        // audio.PlaySoundFile("UFOHit");
+        // AudioEngine::PlaySoundFile("UFOHit");
         
         return true;
     }

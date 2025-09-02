@@ -1,8 +1,17 @@
 #include "Window.h"
-#include <rlgl.h>  // For matrix operations
+#include "MetalLayerSetup.h"
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <vector>
+#include <cmath>
+#include <SDL2/SDL_syswm.h>
+#include <bx/math.h>
+#include <bx/allocator.h>
+#include <bgfx/bgfx.h>
+
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
@@ -12,38 +21,602 @@ namespace omegarace {
 // Random Number Generator
 std::mt19937 m_Random;
 
-// Static members - much simpler with Raylib
+// Static members
+SDL_Window* Window::mWindow = nullptr;
+SDL_Renderer* Window::mRenderer = nullptr;
 Rectangle Window::mBox;
 int Window::mControllerIndex = -1;
 bool Window::mIsFullscreen = false;
 int Window::mWindowedWidth = 1024;
 int Window::mWindowedHeight = 768;
 
+// BGFX rendering state
+bgfx::ViewId Window::mMainView = 0;
+bgfx::ViewId Window::mBloomView = 1;
+bgfx::ProgramHandle Window::mBloomProgram = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle Window::mLineProgram = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle Window::m_program = BGFX_INVALID_HANDLE;
+bgfx::FrameBufferHandle Window::mBloomFrameBuffer = BGFX_INVALID_HANDLE;
+bgfx::TextureHandle Window::mBloomTexture = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle Window::mBloomParams = BGFX_INVALID_HANDLE;
+
 // Scaling for aspect ratio preservation
 float Window::mRenderScale = 1.0f;
 Vector2i Window::mRenderOffset = {0, 0};
 
-void Window::updateControllerDetection() {
-    // Check if current controller is still connected
-    if (mControllerIndex >= 0 && !IsGamepadAvailable(mControllerIndex)) {
-        mControllerIndex = -1;
+// Frame timing
+std::chrono::high_resolution_clock::time_point Window::mLastFrameTime;
+double Window::mDeltaTime = 0.0;
+
+// Input state
+bool Window::mShouldClose = false;
+bool Window::mKeysPressed[512] = {false};
+
+bool Window::mShouldQuit = false;
+
+void Window::Init(int width, int height, std::string title) {
+    m_Random.seed((unsigned int)time(0));
+
+    // Store initial windowed dimensions
+    mWindowedWidth = width;
+    mWindowedHeight = height;
+    mIsFullscreen = false;
+
+    // Initialize SDL2
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
+        throw std::runtime_error("Failed to initialize SDL2: " + std::string(SDL_GetError()));
+    }
+
+    // Create window
+    mWindow = SDL_CreateWindow(
+        title.c_str(),
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,
+        width, height,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+    );
+
+    if (!mWindow) {
+        SDL_Quit();
+        throw std::runtime_error("Failed to create window: " + std::string(SDL_GetError()));
+    }
+
+    // Initialize BGFX (renders into the SDL2 window)
+    if (!InitializeBGFX()) {
+        SDL_DestroyWindow(mWindow);
+        SDL_Quit();
+        throw std::runtime_error("Failed to initialize BGFX");
+    }
+
+    // Try to load shader program, but continue without it if loading fails
+    m_program = loadProgram("vs_line", "fs_line");
+    if (!bgfx::isValid(m_program)) {
+        std::cout << "Note: Custom line shaders not available, using BGFX built-in rendering" << std::endl;
+        m_program = BGFX_INVALID_HANDLE;
     }
     
-    // Always check for controller connections (not just when no controller is detected)
-    // This handles cases where a controller was connected but not detected, or
-    // when switching between multiple controllers
-    static int lastCheckFrame = 0;
-    static int currentFrame = 0;
-    currentFrame++;
+    // Set up controller
+    mControllerIndex = findController();
     
-    // Check every 30 frames (approximately twice per second at 60 FPS) - more frequent
-    if (currentFrame - lastCheckFrame >= 30) {
-        lastCheckFrame = currentFrame;
-        int newController = findController();
-        if (newController != -1 && newController != mControllerIndex) {
-            mControllerIndex = newController;
+    // Set up window box
+    mBox.x = 0;
+    mBox.y = 0;
+    mBox.width = (float)width;
+    mBox.height = (float)height;
+    
+    // Initialize frame timing
+    mLastFrameTime = std::chrono::high_resolution_clock::now();
+    
+    // Setup render states and create bloom resources
+    SetupRenderStates();
+    CreateBloomResources();
+}
+
+bool Window::InitializeBGFX() {
+    std::cout << "InitializeBGFX: Starting BGFX initialization..." << std::endl;
+    
+    // Use multi-threaded mode with Metal layer to avoid semaphore deadlock
+    std::cout << "InitializeBGFX: Setting up multi-threaded mode with Metal layer..." << std::endl;
+    
+    bgfx::Init init;
+    
+    // Use Metal renderer for macOS
+    init.type = bgfx::RendererType::Metal;
+    std::cout << "InitializeBGFX: Using Metal renderer" << std::endl;
+
+    // Get native window handles
+    SDL_SysWMinfo wmi;
+    SDL_VERSION(&wmi.version);
+    if (!SDL_GetWindowWMInfo(mWindow, &wmi)) {
+        std::cout << "InitializeBGFX: Failed to get window info" << std::endl;
+        return false;
+    }
+
+    // Setup Metal layer directly to avoid deadlock
+    void* metalLayer = BGFX::cbSetupMetalLayer(wmi.info.cocoa.window);
+    std::cout << "InitializeBGFX: Created Metal layer directly" << std::endl;
+
+    bgfx::PlatformData pd;
+    pd.nwh = metalLayer;  // Pass Metal layer instead of window
+    std::cout << "InitializeBGFX: Set Metal layer handle" << std::endl;
+
+    init.platformData = pd;
+    init.resolution.width = mWindowedWidth;
+    init.resolution.height = mWindowedHeight;
+    init.resolution.reset = BGFX_RESET_VSYNC;
+    
+    // Configure for multi-threaded operation 
+    init.callback = nullptr;
+    init.allocator = nullptr;
+    
+    std::cout << "InitializeBGFX: Calling bgfx::init()..." << std::endl;
+    bool result = bgfx::init(init);
+    std::cout << "InitializeBGFX: bgfx::init() returned: " << (result ? "SUCCESS" : "FAILED") << std::endl;
+        
+    return result;
+}
+
+void Window::SetupRenderStates() {
+    // Configure main view with black background like the original game
+    // Use proper RGBA format for BGFX: 0xRRGGBBAA (black = 0x000000FF)
+    bgfx::setViewClear(mMainView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f, 0);
+    bgfx::setViewRect(mMainView, 0, 0, uint16_t(mWindowedWidth), uint16_t(mWindowedHeight));
+    
+    // Set up orthographic projection for 2D game coordinates
+    float orthoMatrix[16];
+    bx::mtxOrtho(orthoMatrix, 0.0f, (float)GAME_WIDTH, (float)GAME_HEIGHT, 0.0f, -1.0f, 1.0f, 0.0f, bgfx::getCaps()->homogeneousDepth);
+    bgfx::setViewTransform(mMainView, nullptr, orthoMatrix);
+    }
+
+void Window::CreateBloomResources() {
+    // Create bloom texture and framebuffer
+    mBloomTexture = bgfx::createTexture2D(
+        uint16_t(mWindowedWidth), uint16_t(mWindowedHeight), 
+        false, 1, bgfx::TextureFormat::RGBA8, 
+        BGFX_TEXTURE_RT | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP
+    );
+    
+    bgfx::TextureHandle bloomAttachments[] = { mBloomTexture };
+    mBloomFrameBuffer = bgfx::createFrameBuffer(1, bloomAttachments, true);
+    
+    // Create bloom uniform
+    std::cout << "About to create bloom uniform..." << std::endl;
+    mBloomParams = bgfx::createUniform("u_bloomParams", bgfx::UniformType::Vec4);
+    std::cout << "Created bloom uniform successfully" << std::endl;
+    
+    // Try to load volumetric line shader program for bloom effects
+    mLineProgram = loadProgram("vs_volumetric_line", "fs_volumetric_line");
+    if (!bgfx::isValid(mLineProgram)) {
+        std::cout << "Volumetric line shaders not available, falling back to basic line shaders" << std::endl;
+        mLineProgram = loadProgram("vs_line", "fs_line");
+        if (!bgfx::isValid(mLineProgram)) {
+            std::cout << "Basic line shaders not available either, using built-in rendering" << std::endl;
+            mLineProgram = BGFX_INVALID_HANDLE;
+        }
+    } else {
+        std::cout << "Successfully loaded volumetric line shaders with bloom support" << std::endl;
+    }
+}
+
+void Window::Quit() {
+    ShutdownBGFX();
+    
+    if (mWindow) {
+        SDL_DestroyWindow(mWindow);
+        mWindow = nullptr;
+    }
+    
+    SDL_Quit();
+}
+
+void Window::ShutdownBGFX() {
+    if (bgfx::isValid(mBloomProgram)) {
+        bgfx::destroy(mBloomProgram);
+        mBloomProgram = BGFX_INVALID_HANDLE;
+    }
+    
+    if (bgfx::isValid(mLineProgram)) {
+        bgfx::destroy(mLineProgram);
+        mLineProgram = BGFX_INVALID_HANDLE;
+    }
+    
+    if (bgfx::isValid(m_program)) {
+        bgfx::destroy(m_program);
+        m_program = BGFX_INVALID_HANDLE;
+    }
+    
+    if (bgfx::isValid(mBloomFrameBuffer)) {
+        bgfx::destroy(mBloomFrameBuffer);
+        mBloomFrameBuffer = BGFX_INVALID_HANDLE;
+    }
+    
+    if (bgfx::isValid(mBloomTexture)) {
+        bgfx::destroy(mBloomTexture);
+        mBloomTexture = BGFX_INVALID_HANDLE;
+    }
+    
+    if (bgfx::isValid(mBloomParams)) {
+        bgfx::destroy(mBloomParams);
+        mBloomParams = BGFX_INVALID_HANDLE;
+    }
+    
+    bgfx::shutdown();
+}
+
+// Shader loading implementation
+bgfx::ShaderHandle Window::loadShader(const char* name) {
+    std::string basePath = dataPath() + "/shaders/";
+    
+    // Determine renderer subdirectory based on renderer type
+    const bgfx::Caps* caps = bgfx::getCaps();
+    const char* rendererDir = "";
+    
+    switch (caps->rendererType) {
+        case bgfx::RendererType::Direct3D11:
+        case bgfx::RendererType::Direct3D12:
+            rendererDir = "dx11";
+            break;
+        case bgfx::RendererType::OpenGL:
+        case bgfx::RendererType::OpenGLES:
+            rendererDir = "glsl";
+            break;
+        case bgfx::RendererType::Metal:
+            rendererDir = "metal";
+            break;
+        case bgfx::RendererType::Vulkan:
+            rendererDir = "spirv";
+            break;
+        default:
+            std::cout << "Unsupported renderer for shader loading" << std::endl;
+            return BGFX_INVALID_HANDLE;
+    }
+    
+    std::string fullPath = basePath + rendererDir + "/" + name + ".bin";
+    
+    // Try to load shader from file
+    std::ifstream file(fullPath, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        std::cout << "Failed to open shader file: " << fullPath << std::endl;
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    
+    std::vector<char> buffer(size);
+    if (!file.read(buffer.data(), size)) {
+        std::cout << "Failed to read shader file: " << fullPath << std::endl;
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    const bgfx::Memory* mem = bgfx::copy(buffer.data(), uint32_t(size));
+    bgfx::ShaderHandle shader = bgfx::createShader(mem);
+    
+    if (!bgfx::isValid(shader)) {
+        std::cout << "Failed to create shader from: " << fullPath << std::endl;
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    return shader;
+}
+
+bgfx::ProgramHandle Window::loadProgram(const char* vsName, const char* fsName) {
+    bgfx::ShaderHandle vs = loadShader(vsName);
+    bgfx::ShaderHandle fs = loadShader(fsName);
+    
+    if (!bgfx::isValid(vs) || !bgfx::isValid(fs)) {
+        std::cout << "Failed to load shaders for program: " << vsName << ", " << fsName << std::endl;
+        
+        // Clean up any valid shaders
+        if (bgfx::isValid(vs)) bgfx::destroy(vs);
+        if (bgfx::isValid(fs)) bgfx::destroy(fs);
+        
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    bgfx::ProgramHandle program = bgfx::createProgram(vs, fs, true);
+    
+    if (!bgfx::isValid(program)) {
+        std::cout << "Failed to create shader program from: " << vsName << ", " << fsName << std::endl;
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    std::cout << "Successfully loaded shader program: " << vsName << ", " << fsName << std::endl;
+    return program;
+}
+
+void Window::BeginFrame() {
+    // Calculate delta time
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - mLastFrameTime);
+    mDeltaTime = duration.count() / 1000000.0; // Convert to seconds
+    mLastFrameTime = currentTime;
+
+    // Store previous keyboard state for key press detection
+    static std::vector<Uint8> previousKeyState;
+    const Uint8* currentKeyState = SDL_GetKeyboardState(NULL);
+    static int numKeys = 0;
+    if (numKeys == 0) {
+        SDL_GetKeyboardState(&numKeys);
+        previousKeyState.resize(numKeys);
+    }
+    
+    // Copy current state to previous for next frame
+    std::copy(currentKeyState, currentKeyState + numKeys, previousKeyState.begin());
+
+    // Handle window events
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_QUIT) {
+            mShouldClose = true;
+        } else if (event.type == SDL_WINDOWEVENT) {
+            if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                int newWidth = event.window.data1;
+                int newHeight = event.window.data2;
+                bgfx::reset(uint32_t(newWidth), uint32_t(newHeight), BGFX_RESET_VSYNC);
+                bgfx::setViewRect(mMainView, 0, 0, uint16_t(newWidth), uint16_t(newHeight));
+                
+                mBox.width = (float)newWidth;
+                mBox.height = (float)newHeight;
+            }
+        } else if (event.type == SDL_KEYDOWN) {
+            // Store key press events for IsKeyPressed detection
+            SDL_Scancode scancode = event.key.keysym.scancode;
+            if (scancode < 512) { // SDL_NUM_SCANCODES
+                mKeysPressed[scancode] = true;
+            }
         }
     }
+
+    // Calculate uniform scale to preserve aspect ratio
+    int screenWidth, screenHeight;
+    SDL_GetWindowSize(mWindow, &screenWidth, &screenHeight);
+    
+    float scaleX = (float)screenWidth / GAME_WIDTH;
+    float scaleY = (float)screenHeight / GAME_HEIGHT;
+    mRenderScale = fmin(scaleX, scaleY);
+    
+    // Calculate centering offset
+    float scaledWidth = GAME_WIDTH * mRenderScale;
+    float scaledHeight = GAME_HEIGHT * mRenderScale;
+    mRenderOffset.x = (int)((screenWidth - scaledWidth) / 2.0f);
+    mRenderOffset.y = (int)((screenHeight - scaledHeight) / 2.0f);
+
+    // Set viewport with letterboxing
+    bgfx::setViewRect(mMainView, uint16_t(mRenderOffset.x), uint16_t(mRenderOffset.y), 
+                      uint16_t(scaledWidth), uint16_t(scaledHeight));
+}
+
+void Window::EndFrame() {
+    // For multi-threaded mode, just call frame() - BGFX handles threading
+    bgfx::frame();
+    
+    // Clear key pressed state for next frame
+    std::fill(std::begin(mKeysPressed), std::end(mKeysPressed), false);
+}
+
+bool Window::ShouldClose() {
+    return mShouldClose;
+}
+
+void Window::logError(std::ostream& os, const std::string& msg) {
+    os << msg << " error: " << SDL_GetError() << std::endl;
+}
+
+Rectangle Window::Box() {
+    mBox.width = (float)GAME_WIDTH;  // Always return logical game dimensions
+    mBox.height = (float)GAME_HEIGHT;
+    return mBox;
+}
+
+void Window::DrawLine(Line* LineLocation, const Color& LineColor) {
+    // For now, use simple line drawing - we'll enhance this with proper BGFX vertex buffers later
+    // This is a placeholder implementation
+    DrawVolumetricLine(LineLocation, LineColor, 2.0f);
+}
+
+void Window::DrawVolumetricLine(Line* LineLocation, const Color& LineColor, float thickness) {
+    DrawVolumetricLineWithBloom(LineLocation, LineColor, thickness, 0.5f);
+}
+
+void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineColor, 
+                                        float thickness, float bloomIntensity) {
+    if (!LineLocation) return;
+        
+    // Pack color as 32-bit ABGR for BGFX
+    uint32_t color = 
+        (uint32_t(LineColor.alpha) << 24) |
+        (uint32_t(LineColor.blue) << 16) |
+        (uint32_t(LineColor.green) << 8) |
+        uint32_t(LineColor.red);
+        
+    // Calculate line vector and perpendicular for thickness
+    float dx = (float)(LineLocation->end.x - LineLocation->start.x);
+    float dy = (float)(LineLocation->end.y - LineLocation->start.y);
+    float length = sqrtf(dx * dx + dy * dy);
+    
+    if (length > 0.0f) {
+        // Normalize direction vector
+        dx /= length;
+        dy /= length;
+        
+        // Calculate perpendicular vector for thickness
+        float px = -dy * (thickness * 0.5f);
+        float py = dx * (thickness * 0.5f);
+        
+        // Create quad vertices for thick line with texture coordinates
+        struct VolumetricLineVertex {
+            float x, y;
+            uint32_t color;
+            float u, v; // Texture coordinates for distance calculation
+        };
+        
+        VolumetricLineVertex vertices[4] = {
+            { (float)LineLocation->start.x + px, (float)LineLocation->start.y + py, color, 0.0f, 0.0f }, // Top-left
+            { (float)LineLocation->start.x - px, (float)LineLocation->start.y - py, color, 0.0f, 1.0f }, // Bottom-left
+            { (float)LineLocation->end.x - px, (float)LineLocation->end.y - py, color, 1.0f, 1.0f },     // Bottom-right
+            { (float)LineLocation->end.x + px, (float)LineLocation->end.y + py, color, 1.0f, 0.0f }      // Top-right
+        };
+        
+        // Index buffer for quad (two triangles)
+        uint16_t indices[6] = { 0, 1, 2, 0, 2, 3 };
+        
+        // Create vertex layout for volumetric lines
+        static bgfx::VertexLayout volumetricLayout;
+        static bgfx::VertexLayout basicLayout;
+        static bool layoutsInitialized = false;
+        if (!layoutsInitialized) {
+            // Layout for volumetric shaders (with texture coordinates)
+            volumetricLayout.begin()
+                .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+                .end();
+                
+            // Layout for basic shaders (without texture coordinates)
+            basicLayout.begin()
+                .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                .end();
+                
+            layoutsInitialized = true;
+        }
+        
+        // Choose layout based on shader availability
+        bool useVolumetricShader = bgfx::isValid(mLineProgram);
+        const bgfx::VertexLayout& layout = useVolumetricShader ? volumetricLayout : basicLayout;
+        
+        // Set vertex size based on shader type
+        struct BasicLineVertex { float x, y; uint32_t color; };
+        uint32_t vertexSize = useVolumetricShader ? sizeof(VolumetricLineVertex) : sizeof(BasicLineVertex);
+        
+        // Allocate transient buffers
+        if (bgfx::getAvailTransientVertexBuffer(4, layout) >= 4 &&
+            bgfx::getAvailTransientIndexBuffer(6) >= 6) {
+            
+            bgfx::TransientVertexBuffer tvb;
+            bgfx::TransientIndexBuffer tib;
+            bgfx::allocTransientVertexBuffer(&tvb, 4, layout);
+            bgfx::allocTransientIndexBuffer(&tib, 6);
+            
+            // Copy vertex data
+            if (useVolumetricShader) {
+                memcpy(tvb.data, vertices, sizeof(vertices));
+            } else {
+                // Copy only position and color for basic shaders
+                struct BasicVertex { float x, y; uint32_t color; };
+                BasicVertex* basicVertices = (BasicVertex*)tvb.data;
+                for (int i = 0; i < 4; ++i) {
+                    basicVertices[i].x = vertices[i].x;
+                    basicVertices[i].y = vertices[i].y;
+                    basicVertices[i].color = vertices[i].color;
+                }
+            }
+            
+            memcpy(tib.data, indices, sizeof(indices));
+            
+            // Set buffers
+            bgfx::setVertexBuffer(0, &tvb);
+            bgfx::setIndexBuffer(&tib);
+            
+            // Set bloom parameters if using volumetric shader
+            if (useVolumetricShader && bgfx::isValid(mBloomParams)) {
+                float bloomParams[4] = {
+                    bloomIntensity * 1.5f,    // x: bloom intensity (moderate boost)
+                    1.2f,                     // y: bloom radius
+                    0.5f,                     // z: bloom threshold
+                    thickness                 // w: line thickness
+                };
+                bgfx::setUniform(mBloomParams, bloomParams);
+            }
+            
+            // Set render state for triangles with alpha blending
+            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | 
+                           BGFX_STATE_BLEND_ALPHA;
+            bgfx::setState(state);
+            
+            // Submit with appropriate shader program
+            if (bgfx::isValid(mLineProgram)) {
+                bgfx::submit(mMainView, mLineProgram);
+            } else {
+                // Use BGFX_INVALID_HANDLE to trigger built-in shader
+                bgfx::submit(mMainView, BGFX_INVALID_HANDLE);
+            }
+        }
+    }
+}
+
+void Window::DrawPoint(Vector2i* Location, const Color& PointColor) {
+    if (!Location) return;
+    Rectangle rect;
+    rect.x = (float)Location->x;
+    rect.y = (float)Location->y;
+    rect.width = 1.0f;
+    rect.height = 1.0f;
+    DrawRect(&rect, PointColor);
+}
+
+void Window::DrawRect(const Rectangle* RectangleLocation, const Color& RectangleColor) {
+    if (!RectangleLocation) return;
+
+    // Pack color as 32-bit ABGR for BGFX
+    uint32_t color = 
+        (uint32_t(RectangleColor.alpha) << 24) |
+        (uint32_t(RectangleColor.blue) << 16) |
+        (uint32_t(RectangleColor.green) << 8) |
+        uint32_t(RectangleColor.red);
+
+    // Rectangle corners
+    float left = RectangleLocation->x;
+    float right = RectangleLocation->x + RectangleLocation->width;
+    float top = RectangleLocation->y;
+    float bottom = RectangleLocation->y + RectangleLocation->height;
+
+    struct LineVertex {
+        float x, y;
+        uint32_t color;
+    };
+
+    // 4 lines: top, right, bottom, left
+    LineVertex vertices[8] = {
+        { left,  top,    color }, { right, top,    color },    // Top
+        { right, top,    color }, { right, bottom, color },    // Right
+        { right, bottom, color }, { left,  bottom, color },    // Bottom
+        { left,  bottom, color }, { left,  top,    color }     // Left
+    };
+
+    static bgfx::VertexLayout layout;
+    static bool layoutInitialized = false;
+    if (!layoutInitialized) {
+        layout.begin()
+            .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+            .end();
+        layoutInitialized = true;
+    }
+
+    if (bgfx::getAvailTransientVertexBuffer(8, layout) >= 8) {
+        bgfx::TransientVertexBuffer tvb;
+        bgfx::allocTransientVertexBuffer(&tvb, 8, layout);
+        memcpy(tvb.data, vertices, sizeof(vertices));
+        bgfx::setVertexBuffer(0, &tvb, 0, 8);
+        uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_PT_LINES;
+        bgfx::setState(state);
+        if (bgfx::isValid(m_program)) {
+            bgfx::submit(mMainView, m_program);
+        } else {
+            bgfx::submit(mMainView, BGFX_INVALID_HANDLE);
+        }
+    }
+}
+
+Vector2i Window::GetWindowSize() {
+    return { GAME_WIDTH, GAME_HEIGHT }; // Always return logical game dimensions
+}
+
+int Window::Random(int Min, int Max) {
+    std::uniform_int_distribution<uint32_t> roll(Min, Max);
+    return roll(m_Random);
 }
 
 std::string Window::dataPath() {
@@ -62,446 +635,385 @@ std::string Window::dataPath() {
     return "../Resources";
 }
 
-// Shader support for advanced effects
-static Shader bloomShader = {0};  // Static shader storage
-static bool shaderLoaded = false;
-
-void Window::Init(int width, int height, std::string title) {
-    m_Random.seed((unsigned int)time(0));
-
-    // Store initial windowed dimensions
-    mWindowedWidth = width;
-    mWindowedHeight = height;
-    mIsFullscreen = false;
-
-    // Initialize Raylib window with resizable flag
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(width, height, title.c_str());
-    SetTargetFPS(60);  // Enable VSync equivalent
+void Window::updateControllerDetection() {
+    // Check if current controller is still connected  
+    if (mControllerIndex >= 0 && !SDL_GameControllerGetAttached(SDL_GameControllerFromInstanceID(mControllerIndex))) {
+        mControllerIndex = -1;
+    }
     
-    // Initialize audio system
-    InitAudioDevice();
+    // Check for new controllers periodically
+    static auto lastCheck = std::chrono::high_resolution_clock::now();
+    auto now = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastCheck);
     
-    // Set up controller
-    mControllerIndex = findController();
-    
-    // Set up window box
-    mBox.x = 0;
-    mBox.y = 0;
-    mBox.width = (float)width;
-    mBox.height = (float)height;
-        
-    // Enable alpha blending for volumetric effects
-    // Raylib handles this automatically
-    
-    // Load bloom shader for enhanced volumetric lines
-    std::string shaderPath = dataPath() + "/bloom.fs";
-    LoadBloomShader(shaderPath);
-}
-
-void Window::Quit() {
-    CloseAudioDevice();
-    CloseWindow();
-}
-
-void Window::logRaylibError(std::ostream& os, const std::string& msg) {
-    os << msg << " error: " << std::endl;
-}
-
-void Window::Present() {
-    // Raylib handles this automatically in EndDrawing()
-    // This function is now essentially a no-op, but kept for compatibility
-}
-
-Rectangle Window::Box() {
-    mBox.width = (float)GAME_WIDTH;  // Always return logical game dimensions
-    mBox.height = (float)GAME_HEIGHT;
-    return mBox;
-}
-
-void Window::DrawLine(Line* LineLocation, const Color& LineColor) {
-    // Convert custom Color to Raylib Color
-    ::Color rlColor = {
-        (unsigned char)LineColor.red,
-        (unsigned char)LineColor.green,
-        (unsigned char)LineColor.blue,
-        (unsigned char)LineColor.alpha
-    };
-    
-    // Convert Vector2i to Raylib Vector2
-    ::Vector2 start = {(float)LineLocation->start.x, (float)LineLocation->start.y};
-    ::Vector2 end = {(float)LineLocation->end.x, (float)LineLocation->end.y};
-    
-    DrawLineV(start, end, rlColor);
-}
-
-void Window::DrawVolumetricLine(Line* LineLocation, const Color& LineColor, float thickness) {
-    // Use the bloom version with moderate bloom intensity for enhanced visuals
-    DrawVolumetricLineWithBloom(LineLocation, LineColor, thickness, 0.3f);
-}
-
-void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineColor, 
-                                        float thickness, float bloomIntensity) {
-    // Convert custom Color to Raylib Color
-    ::Color rlColor = {
-        (unsigned char)LineColor.red,
-        (unsigned char)LineColor.green,
-        (unsigned char)LineColor.blue,
-        (unsigned char)LineColor.alpha
-    };
-    
-    ::Vector2 start = {(float)LineLocation->start.x, (float)LineLocation->start.y};
-    ::Vector2 end = {(float)LineLocation->end.x, (float)LineLocation->end.y};
-    
-    // Performance optimization: Use simpler rendering
-    if (bloomIntensity <= 0.5f) {
-        // Low bloom - just draw core line with slight glow
-        DrawLineEx(start, end, thickness, rlColor);
-        if (bloomIntensity > 0.2f) {
-            unsigned char glowAlpha = (unsigned char)(rlColor.a * bloomIntensity * 0.3f);
-            ::Color glowColor = {rlColor.r, rlColor.g, rlColor.b, glowAlpha};
-            DrawLineEx(start, end, thickness + 1.0f, glowColor);
+    if (duration.count() > 500) { // Check every 500ms
+        lastCheck = now;
+        int newController = findController();
+        if (newController != -1 && newController != mControllerIndex) {
+            mControllerIndex = newController;
         }
-    } else {
-        // Higher bloom - use 2 passes maximum instead of 3+
-        DrawLineEx(start, end, thickness, rlColor);
-        
-        // Single bloom pass
-        float bloomThickness = thickness + 2.0f;
-        unsigned char bloomAlpha = (unsigned char)(rlColor.a * fmin(bloomIntensity, 1.0f) * 0.4f);
-        ::Color bloomColor = {rlColor.r, rlColor.g, rlColor.b, bloomAlpha};
-        DrawLineEx(start, end, bloomThickness, bloomColor);
     }
 }
 
-void Window::DrawPoint(Vector2i* Location, const Color& PointColor) {
-    ::Color rlColor = {
-        (unsigned char)PointColor.red,
-        (unsigned char)PointColor.green,
-        (unsigned char)PointColor.blue,
-        (unsigned char)PointColor.alpha
-    };
-    
-    DrawPixel(Location->x, Location->y, rlColor);
-}
-
-void Window::DrawRect(const Rectangle* RectangleLocation, const Color& RectangleColor) {
-    ::Color rlColor = {
-        (unsigned char)RectangleColor.red,
-        (unsigned char)RectangleColor.green,
-        (unsigned char)RectangleColor.blue,
-        (unsigned char)RectangleColor.alpha
-    };
-    
-    DrawRectangleLinesEx(*RectangleLocation, 1.0f, rlColor);  // Draw outline only
-}
-
-Vector2i Window::GetWindowSize() {
-    return { GAME_WIDTH, GAME_HEIGHT }; // Always return logical game dimensions
-}
-
-int Window::Random(int Min, int Max) {
-    std::uniform_int_distribution<uint32_t> roll(Min, Max);
-    return roll(m_Random);
-}
-
 int Window::findController() {
-    // Enhanced gamepad detection with PS4 controller support
-    
-    for (int i = 0; i < 16; i++) {  // Check up to 16 gamepads (increased from 4)
-        if (IsGamepadAvailable(i)) {
-            const char* gamepadName = GetGamepadName(i);            
-            if (gamepadName) {
-                std::string name = gamepadName;
-                // Convert to lowercase for case-insensitive matching
-                std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-                
-                bool isPlayStationController = false;
-                std::string controllerType = "Generic";
-                
-                // Check for PlayStation controller patterns
-                if (name.find("ps4") != std::string::npos ||
-                    name.find("dualshock") != std::string::npos ||
-                    name.find("dualshock 4") != std::string::npos) {
-                    isPlayStationController = true;
-                    controllerType = "PS4 DualShock 4";
-                } else if (name.find("dualsense") != std::string::npos) {
-                    isPlayStationController = true;
-                    controllerType = "PS5 DualSense";
-                } else if (name.find("sony") != std::string::npos) {
-                    isPlayStationController = true;
-                    controllerType = "Sony Controller";
-                } else if (name.find("wireless controller") != std::string::npos) {
-                    // This could be either PS4 or PS5, but we'll accept it
-                    isPlayStationController = true;
-                    controllerType = "PlayStation Wireless Controller";
-                } else if (name.find("controller") != std::string::npos && 
-                          (name.find("(wireless") != std::string::npos || 
-                           name.find("(dualshock") != std::string::npos)) {
-                    // Handle cases like "Controller (Wireless Controller)"
-                    isPlayStationController = true;
-                    controllerType = "PlayStation Controller";
+    // Look for connected game controllers
+    for (int i = 0; i < SDL_NumJoysticks(); i++) {
+        if (SDL_IsGameController(i)) {
+            SDL_GameController* controller = SDL_GameControllerOpen(i);
+            if (controller) {
+                const char* name = SDL_GameControllerName(controller);
+                if (name) {
+                    std::string nameStr = name;
+                    std::transform(nameStr.begin(), nameStr.end(), nameStr.begin(), ::tolower);
+                    
+                    // Check for PlayStation controller patterns
+                    if (nameStr.find("ps4") != std::string::npos ||
+                        nameStr.find("dualshock") != std::string::npos ||
+                        nameStr.find("dualsense") != std::string::npos ||
+                        nameStr.find("sony") != std::string::npos ||
+                        nameStr.find("wireless controller") != std::string::npos) {
+                        // Preferred controller found
+                        return i;
+                    }
                 }
+                // Keep first available controller as fallback
+                return i;
             }
-            
-            return i;  // Return first available gamepad (prioritizes PlayStation controllers due to order)
         }
     }
     return -1;
 }
 
-void Window::BeginDrawing() {
-    ::BeginDrawing();
-
-    int screenWidth = GetScreenWidth();
-    int screenHeight = GetScreenHeight();
-    
-    // Calculate uniform scale to preserve aspect ratio
-    float scaleX = (float)screenWidth / GAME_WIDTH;
-    float scaleY = (float)screenHeight / GAME_HEIGHT;
-    mRenderScale = fmin(scaleX, scaleY);  // Use smaller scale to fit entirely
-    
-    // Calculate centering offset
-    float scaledWidth = GAME_WIDTH * mRenderScale;
-    float scaledHeight = GAME_HEIGHT * mRenderScale;
-    mRenderOffset.x = (int)((screenWidth - scaledWidth) / 2.0f);
-    mRenderOffset.y = (int)((screenHeight - scaledHeight) / 2.0f);
-
-    // Use a subtle dark gray for letterboxing instead of pure black
-    ClearBackground((::Color){20, 20, 24, 255});
-    
-    rlPushMatrix();
-    rlTranslatef((float)mRenderOffset.x, (float)mRenderOffset.y, 0.0f);
-    rlScalef(mRenderScale, mRenderScale, 1.0f);
-}
- 
-void Window::EndDrawing() {
-    // Restore the transformation matrix
-    rlPopMatrix();
-    ::EndDrawing();
-}
-
-bool Window::ShouldClose() {
-    return WindowShouldClose();
-}
-
-void Window::LoadBloomShader(const std::string& fragmentShaderPath) {
-    if (!shaderLoaded) {
-        // Load shader (vertex shader can be 0 for default)
-        bloomShader = LoadShader(0, fragmentShaderPath.c_str());
-        shaderLoaded = (bloomShader.id > 0);
-        
-        if (shaderLoaded) {
-            // Set up shader uniforms for bloom effect
-            int bloomIntensityLoc = GetShaderLocation(bloomShader, "bloomIntensity");
-            int bloomRadiusLoc = GetShaderLocation(bloomShader, "bloomRadius");
-            int bloomThresholdLoc = GetShaderLocation(bloomShader, "bloomThreshold");
-            
-            // Set default values
-            float defaultIntensity = 1.0f;
-            float defaultRadius = 2.0f;
-            float defaultThreshold = 0.8f;
-            
-            SetShaderValue(bloomShader, bloomIntensityLoc, &defaultIntensity, SHADER_UNIFORM_FLOAT);
-            SetShaderValue(bloomShader, bloomRadiusLoc, &defaultRadius, SHADER_UNIFORM_FLOAT);
-            SetShaderValue(bloomShader, bloomThresholdLoc, &defaultThreshold, SHADER_UNIFORM_FLOAT);
-        }
-    }
-}
-
-void Window::BeginBloomMode() {
-    if (shaderLoaded && bloomShader.id > 0) {
-        BeginShaderMode(bloomShader);
-    }
-}
-
-void Window::EndBloomMode() {
-    if (shaderLoaded && bloomShader.id > 0) {
-        EndShaderMode();
-    }
-}
-
-// Enhanced input support
+// Controller input functions
 bool Window::IsControllerButtonPressed(int button) {
     if (mControllerIndex >= 0) {
-        return IsGamepadButtonPressed(mControllerIndex, button);
+        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+        if (controller) {
+            return SDL_GameControllerGetButton(controller, (SDL_GameControllerButton)button);
+        }
     }
     return false;
 }
 
-::Vector2 Window::GetControllerLeftStick() {
-    if (mControllerIndex >= 0) {
-        return {
-            GetGamepadAxisMovement(mControllerIndex, GAMEPAD_AXIS_LEFT_X),
-            GetGamepadAxisMovement(mControllerIndex, GAMEPAD_AXIS_LEFT_Y)
-        };
-    }
-    return {0, 0};
-}
-
-// NEW: Enhanced PS4 controller support functions
 bool Window::IsControllerButtonDown(int button) {
-    if (mControllerIndex >= 0) {
-        return IsGamepadButtonDown(mControllerIndex, button);
-    }
-    return false;
+    return IsControllerButtonPressed(button); // Same as pressed for SDL
 }
 
-::Vector2 Window::GetControllerRightStick() {
+Vector2f Window::GetControllerLeftStick() {
     if (mControllerIndex >= 0) {
-        return {
-            GetGamepadAxisMovement(mControllerIndex, GAMEPAD_AXIS_RIGHT_X),
-            GetGamepadAxisMovement(mControllerIndex, GAMEPAD_AXIS_RIGHT_Y)
-        };
+        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+        if (controller) {
+            float x = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX) / 32767.0f;
+            float y = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY) / 32767.0f;
+            return {x, y};
+        }
     }
-    return {0, 0};
+    return {0.0f, 0.0f};
+}
+
+Vector2f Window::GetControllerRightStick() {
+    if (mControllerIndex >= 0) {
+        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+        if (controller) {
+            float x = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_RIGHTX) / 32767.0f;
+            float y = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_RIGHTY) / 32767.0f;
+            return {x, y};
+        }
+    }
+    return {0.0f, 0.0f};
 }
 
 float Window::GetControllerLeftTrigger() {
     if (mControllerIndex >= 0) {
-        return GetGamepadAxisMovement(mControllerIndex, GAMEPAD_AXIS_LEFT_TRIGGER);
+        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+        if (controller) {
+            return SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT) / 32767.0f;
+        }
     }
     return 0.0f;
 }
 
 float Window::GetControllerRightTrigger() {
     if (mControllerIndex >= 0) {
-        return GetGamepadAxisMovement(mControllerIndex, GAMEPAD_AXIS_RIGHT_TRIGGER);
+        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+        if (controller) {
+            return SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) / 32767.0f;
+        }
     }
     return 0.0f;
 }
 
 bool Window::IsControllerConnected() {
-    return mControllerIndex >= 0 && IsGamepadAvailable(mControllerIndex);
+    return mControllerIndex >= 0;
 }
 
 std::string Window::GetControllerName() {
     if (mControllerIndex >= 0) {
-        const char* name = GetGamepadName(mControllerIndex);
-        return name ? std::string(name) : "Unknown Controller";
+        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+        if (controller) {
+            const char* name = SDL_GameControllerName(controller);
+            return name ? std::string(name) : "Unknown Controller";
+        }
     }
     return "No Controller";
 }
 
-// FPS display functions
-void Window::DrawFPS(int x, int y) {
-    // Raylib's built-in FPS display function
-    // ::DrawFPS(x, y);
+void Window::BeginBloomMode() {
+    // TODO: Implement BGFX bloom mode
 }
 
-void Window::PrintFPS() {
-    // Print FPS to console
-    static int frameCounter = 0;
-    static float timeAccumulator = 0.0f;
-    
-    frameCounter++;
-    timeAccumulator += GetFrameTime();
-    
-    // Print FPS every second
-    if (timeAccumulator >= 1.0f) {
-        frameCounter = 0;
-        timeAccumulator = 0.0f;
-    }
+void Window::EndBloomMode() {
+    // TODO: Implement BGFX bloom mode 
 }
 
 // Full screen warp effect for dramatic wave transitions
 void Window::DrawFullScreenWarp(float intensity, float time) {
-    // Use logical game dimensions instead of physical screen dimensions
-    ::Vector2 center = { (float)GAME_WIDTH / 2.0f, (float)GAME_HEIGHT / 2.0f };
-    
-    // Create multiple concentric rings expanding outward
-    for (int ring = 0; ring < 8; ring++) {
-        float ringPhase = time * 3.0f + ring * 0.5f;
-        float radius = (50.0f + ring * 40.0f) * intensity;
-        
-        // Pulsing warp rings with distortion
-        float distortion = sinf(ringPhase) * 0.3f + 1.0f;
-        float actualRadius = radius * distortion;
-        
-        // Color shifts from blue to white to cyan
-        unsigned char alpha = (unsigned char)(128 * intensity * (1.0f - ring / 8.0f));
-        ::Color ringColor;
-        if (ring % 2 == 0) {
-            ringColor = { 0, 150, 255, alpha };  // Bright blue
-        } else {
-            ringColor = { 100, 255, 255, alpha }; // Cyan
+    // Draw concentric rings and radial lines from center
+    const int numRings = 6;
+    const int numRadials = 16;
+    float cx = GAME_WIDTH * 0.5f;
+    float cy = GAME_HEIGHT * 0.5f;
+    float maxRadius = std::min(GAME_WIDTH, GAME_HEIGHT) * 0.5f * (0.7f + 0.3f * intensity);
+    float ringAlpha = 0.5f * intensity;
+    float radialAlpha = 0.3f * intensity;
+    float baseHue = fmodf(time * 0.2f, 1.0f);
+
+    // Helper to pack color
+    auto packColor = [](float r, float g, float b, float a) -> uint32_t {
+        return (uint32_t(a * 255) << 24) |
+               (uint32_t(b * 255) << 16) |
+               (uint32_t(g * 255) << 8) |
+               (uint32_t(r * 255));
+    };
+
+    // Draw rings
+    for (int i = 1; i <= numRings; ++i) {
+        float t = float(i) / (numRings + 1);
+        float radius = maxRadius * t * (0.8f + 0.2f * sinf(time + t * 6.28f));
+        uint32_t color = packColor(1.0f, 1.0f, 1.0f, ringAlpha * (1.0f - t * 0.5f));
+        const int segments = 64;
+        struct V { float x, y; uint32_t color; };
+        V verts[segments * 2];
+        for (int s = 0; s < segments; ++s) {
+            float a0 = (s     ) * 2.0f * 3.1415926f / segments;
+            float a1 = (s + 1 ) * 2.0f * 3.1415926f / segments;
+            verts[s*2+0] = { cx + cosf(a0) * radius, cy + sinf(a0) * radius, color };
+            verts[s*2+1] = { cx + cosf(a1) * radius, cy + sinf(a1) * radius, color };
         }
-        
-        // Draw thick ring with bloom effect
-        DrawRingLines(center, actualRadius - 8.0f, actualRadius + 8.0f, 0, 360, 32, ringColor);
+        static bgfx::VertexLayout layout;
+        static bool layoutInitialized = false;
+        if (!layoutInitialized) {
+            layout.begin()
+                .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                .end();
+            layoutInitialized = true;
+        }
+        if (bgfx::getAvailTransientVertexBuffer(segments * 2, layout) >= segments * 2) {
+            bgfx::TransientVertexBuffer tvb;
+            bgfx::allocTransientVertexBuffer(&tvb, segments * 2, layout);
+            memcpy(tvb.data, verts, sizeof(verts));
+            bgfx::setVertexBuffer(0, &tvb, 0, segments * 2);
+            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_PT_LINES;
+            bgfx::setState(state);
+            if (bgfx::isValid(m_program)) {
+                bgfx::submit(mMainView, m_program);
+            } else {
+                bgfx::submit(mMainView, BGFX_INVALID_HANDLE);
+            }
+        }
     }
-    
-    // Radial lines emanating from center
-    for (int i = 0; i < 16; i++) {
-        float angle = (i * 22.5f) + time * 45.0f; // Rotating radial lines
-        float lineLength = 400.0f * intensity;
-        
-        // Convert to radians manually (DEG2RAD equivalent)
-        float angleRad = angle * PI / 180.0f;
-        
-        ::Vector2 endPos = {
-            center.x + cosf(angleRad) * lineLength,
-            center.y + sinf(angleRad) * lineLength
-        };
-        
-        // Alternating line colors
-        ::Color lineColor = (i % 2 == 0) ? 
-            (::Color){ 255, 255, 255, (unsigned char)(100 * intensity) } :  // White
-            (::Color){ 0, 255, 255, (unsigned char)(80 * intensity) };      // Cyan
-            
-        DrawLineEx(center, endPos, 3.0f, lineColor);
+
+    // Draw radials
+    for (int i = 0; i < numRadials; ++i) {
+        float angle = (float)i / numRadials * 2.0f * 3.1415926f;
+        float r0 = maxRadius * 0.2f * (0.8f + 0.2f * sinf(time + i));
+        float r1 = maxRadius * (0.95f + 0.05f * cosf(time * 0.7f + i));
+        float x0 = cx + cosf(angle) * r0;
+        float y0 = cy + sinf(angle) * r0;
+        float x1 = cx + cosf(angle) * r1;
+        float y1 = cy + sinf(angle) * r1;
+        uint32_t color = packColor(1.0f, 1.0f, 1.0f, radialAlpha);
+        struct V { float x, y; uint32_t color; };
+        V verts[2] = { {x0, y0, color}, {x1, y1, color} };
+        static bgfx::VertexLayout layout;
+        static bool layoutInitialized = false;
+        if (!layoutInitialized) {
+            layout.begin()
+                .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                .end();
+            layoutInitialized = true;
+        }
+        if (bgfx::getAvailTransientVertexBuffer(2, layout) >= 2) {
+            bgfx::TransientVertexBuffer tvb;
+            bgfx::allocTransientVertexBuffer(&tvb, 2, layout);
+            memcpy(tvb.data, verts, sizeof(verts));
+            bgfx::setVertexBuffer(0, &tvb, 0, 2);
+            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_PT_LINES;
+            bgfx::setState(state);
+            if (bgfx::isValid(m_program)) {
+                bgfx::submit(mMainView, m_program);
+            } else {
+                bgfx::submit(mMainView, BGFX_INVALID_HANDLE);
+            }
+        }
     }
-    
-    // Central burst effect
-    float burstRadius = 30.0f * intensity * (1.0f + sinf(time * 8.0f) * 0.3f);
-    ::Color burstColor = { 255, 255, 255, (unsigned char)(200 * intensity) };
-    DrawCircleLines((int)center.x, (int)center.y, burstRadius, burstColor);
+}
+
+// Shader and effects support
+void Window::LoadBloomShader(const std::string& fragmentShaderPath) {
+    // TODO: Load BGFX shader program for bloom effect
+    // This would involve loading and compiling vertex and fragment shaders
+    static bool warningShown = false;
+    if (!warningShown) {
+        std::cout << "Warning: LoadBloomShader not implemented yet for BGFX" << std::endl;
+        warningShown = true;
+    }
 }
 
 void Window::BeginWarpTransition() {
-    // Set additive blending for intense warp effect
-    BeginBlendMode(BLEND_ADDITIVE);
+    // TODO: Set up additive blending for warp effect
 }
 
 void Window::EndWarpTransition() {
-    // Restore normal blending
-    EndBlendMode();
+    // TODO: Restore normal blending
 }
 
+// Fullscreen support
 bool Window::CheckForFullscreenToggle() {
-    // Check both fullscreen state and window size changes
-    bool currentFullscreenState = IsWindowFullscreen();
-    int currentWidth = GetScreenWidth();
-    int currentHeight = GetScreenHeight();
+    Uint32 currentFlags = SDL_GetWindowFlags(mWindow);
+    bool currentFullscreen = (currentFlags & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0;
     
-    // Check if either fullscreen state changed OR window size changed
-    bool stateChanged = (currentFullscreenState != mIsFullscreen);
+    int currentWidth, currentHeight;
+    SDL_GetWindowSize(mWindow, &currentWidth, &currentHeight);
+    
+    bool stateChanged = (currentFullscreen != mIsFullscreen);
     bool sizeChanged = (currentWidth != (int)mBox.width || currentHeight != (int)mBox.height);
     
     if (stateChanged || sizeChanged) {
-        mIsFullscreen = currentFullscreenState;
-        
-        // Update mBox dimensions to match new screen size
+        mIsFullscreen = currentFullscreen;
         mBox.width = (float)currentWidth;
         mBox.height = (float)currentHeight;
-                
-        return true;  // Screen size or state changed
+        return true;
     }
     
-    return false;  // No change
+    return false;
 }
 
 void Window::ToggleFullscreen() {
-    ::ToggleFullscreen();
-    mIsFullscreen = IsWindowFullscreen();
+    if (mIsFullscreen) {
+        SDL_SetWindowFullscreen(mWindow, 0);
+        SDL_SetWindowSize(mWindow, mWindowedWidth, mWindowedHeight);
+        SDL_SetWindowPosition(mWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    } else {
+        SDL_GetWindowSize(mWindow, &mWindowedWidth, &mWindowedHeight);
+        SDL_SetWindowFullscreen(mWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    }
     
-    // Update mBox dimensions
-    mBox.width = (float)GetScreenWidth();
-    mBox.height = (float)GetScreenHeight();
+    mIsFullscreen = !mIsFullscreen;
+    
+    // Update window box with new dimensions
+    int newWidth, newHeight;
+    SDL_GetWindowSize(mWindow, &newWidth, &newHeight);
+    mBox.width = (float)newWidth;
+    mBox.height = (float)newHeight;
 }
 
 bool Window::IsFullscreen() {
     return mIsFullscreen;
+}
+
+// Input functions - Raylib-compatible API using SDL2
+bool Window::IsKeyPressed(int key) {
+    // Map our key constants to SDL scancodes
+    SDL_Scancode scancode;
+    switch (key) {
+        case KEY_A: scancode = SDL_SCANCODE_A; break;
+        case KEY_D: scancode = SDL_SCANCODE_D; break;
+        case KEY_W: scancode = SDL_SCANCODE_W; break;
+        case KEY_S: scancode = SDL_SCANCODE_S; break;
+        case KEY_N: scancode = SDL_SCANCODE_N; break;
+        case KEY_P: scancode = SDL_SCANCODE_P; break;
+        case KEY_LEFT: scancode = SDL_SCANCODE_LEFT; break;
+        case KEY_RIGHT: scancode = SDL_SCANCODE_RIGHT; break;
+        case KEY_UP: scancode = SDL_SCANCODE_UP; break;
+        case KEY_SPACE: scancode = SDL_SCANCODE_SPACE; break;
+        case KEY_LEFT_CONTROL: scancode = SDL_SCANCODE_LCTRL; break;
+        case KEY_ESCAPE: scancode = SDL_SCANCODE_ESCAPE; break;
+        case KEY_F11: scancode = SDL_SCANCODE_F11; break;
+        default: 
+            return false;
+    }
+    
+    bool result = mKeysPressed[scancode];
+    
+    return result;
+}
+
+bool Window::IsKeyDown(int key) {
+    // Map our key constants to SDL scancodes
+    SDL_Scancode scancode;
+    switch (key) {
+        case KEY_A: scancode = SDL_SCANCODE_A; break;
+        case KEY_D: scancode = SDL_SCANCODE_D; break;
+        case KEY_W: scancode = SDL_SCANCODE_W; break;
+        case KEY_S: scancode = SDL_SCANCODE_S; break;
+        case KEY_N: scancode = SDL_SCANCODE_N; break;
+        case KEY_P: scancode = SDL_SCANCODE_P; break;
+        case KEY_LEFT: scancode = SDL_SCANCODE_LEFT; break;
+        case KEY_RIGHT: scancode = SDL_SCANCODE_RIGHT; break;
+        case KEY_UP: scancode = SDL_SCANCODE_UP; break;
+        case KEY_SPACE: scancode = SDL_SCANCODE_SPACE; break;
+        case KEY_LEFT_CONTROL: scancode = SDL_SCANCODE_LCTRL; break;
+        case KEY_ESCAPE: scancode = SDL_SCANCODE_ESCAPE; break;
+        case KEY_F11: scancode = SDL_SCANCODE_F11; break;
+        default: return false;
+    }
+    
+    const Uint8* keyState = SDL_GetKeyboardState(NULL);
+    return keyState[scancode];
+}
+
+bool Window::IsGamepadButtonPressed(int gamepad, int button) {
+    // For now, treat pressed and down the same way
+    return IsGamepadButtonDown(gamepad, button);
+}
+
+bool Window::IsGamepadButtonDown(int gamepad, int button) {
+    if (mControllerIndex < 0) return false;
+    
+    SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+    if (!controller) return false;
+    
+    // Map our button constants to SDL2 constants
+    SDL_GameControllerButton sdlButton;
+    switch (button) {
+        case GAMEPAD_BUTTON_MIDDLE_LEFT: sdlButton = SDL_CONTROLLER_BUTTON_BACK; break;
+        case GAMEPAD_BUTTON_MIDDLE_RIGHT: sdlButton = SDL_CONTROLLER_BUTTON_START; break;
+        case GAMEPAD_BUTTON_LEFT_FACE_LEFT: sdlButton = SDL_CONTROLLER_BUTTON_DPAD_LEFT; break;
+        case GAMEPAD_BUTTON_LEFT_FACE_RIGHT: sdlButton = SDL_CONTROLLER_BUTTON_DPAD_RIGHT; break;
+        case GAMEPAD_BUTTON_RIGHT_TRIGGER_1: sdlButton = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER; break;
+        default: return false;
+    }
+    
+    return SDL_GameControllerGetButton(controller, sdlButton) != 0;
+}
+
+float Window::GetGamepadAxisMovement(int gamepad, int axis) {
+    if (mControllerIndex < 0) return 0.0f;
+    
+    SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+    if (!controller) return 0.0f;
+    
+    SDL_GameControllerAxis sdlAxis;
+    switch (axis) {
+        case GAMEPAD_AXIS_LEFT_X: sdlAxis = SDL_CONTROLLER_AXIS_LEFTX; break;
+        default: return 0.0f;
+    }
+    
+    Sint16 value = SDL_GameControllerGetAxis(controller, sdlAxis);
+    return value / 32767.0f;  // Normalize to -1.0 to 1.0
 }
 
 } // namespace omegarace

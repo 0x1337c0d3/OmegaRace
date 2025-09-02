@@ -1,6 +1,6 @@
 #pragma once
 
-#include <raylib.h>
+#include <chrono>
 
 namespace omegarace {
 
@@ -18,8 +18,8 @@ class Timer {
     bool paused() const;
 
   private:
-    double mStartTime;      // Changed to double for GetTime() precision
-    double mPausedTime;     // Changed to double for GetTime() precision
+    std::chrono::high_resolution_clock::time_point mStartTime;
+    std::chrono::duration<double> mPausedDuration;
     bool mStarted;
     bool mPaused;
 };

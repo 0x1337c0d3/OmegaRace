@@ -42,10 +42,12 @@ Player::~Player() {
 }
 
 void Player::initialize() {
-    audio.LoadSound("PlayerShot");
-    audio.LoadSound("Thrust");
-    audio.LoadSound("PlayerHit");
-    audio.LoadSound("BorderHit");
+    // Use static AudioEngine methods instead of instance methods
+    AudioEngine::LoadSound("PlayerShot");
+    std::cout << "Player::initialize() - Loaded PlayerShot using static method, skipping other sounds for testing" << std::endl;
+    // AudioEngine::LoadSound("Thrust");  
+    // AudioEngine::LoadSound("PlayerHit");
+    // AudioEngine::LoadSound("BorderHit");
 }
 
 // Public Methods
@@ -140,7 +142,7 @@ void Player::restart() {
 void Player::hit() {
     if (!m_Hit) {
         // Play Player explosion sound.
-        audio.PlaySoundFile("PlayerHit");
+        AudioEngine::PlaySoundFile("PlayerHit");
 
         m_ExplosionOn = true;
         m_Hit = true;
@@ -148,7 +150,7 @@ void Player::hit() {
 
         // Turn off thrust sound.
         if (m_ThrustChannel != -1) {
-            audio.StopChannel(m_ThrustChannel);
+            AudioEngine::StopChannel(m_ThrustChannel);
             m_ThrustChannel = -1;
         }
     }
@@ -213,7 +215,7 @@ void Player::fireShot() {
     for (int shot = 0; shot < m_NumberOfShots; shot++) {
         if (!pShots[shot]->getActive()) {
             // If shot found that is not active, then activate that shot.
-            audio.PlaySoundFile("PlayerShot");
+            AudioEngine::PlaySoundFile("PlayerShot");
             // Fire from nose position instead of center
             Vector2f nosePos = getNosePosition();
             pShots[shot]->activate(nosePos, m_Rotation.amount);
@@ -250,7 +252,7 @@ void Player::initializeShot() {
 
 void Player::updateEdge() {
     if (checkForXEdge()) {
-        audio.PlaySoundFile("BorderHit");
+        AudioEngine::PlaySoundFile("BorderHit");
         bounceX();
 
         if (m_Location.x > Window::GetWindowSize().x / 2) {
@@ -274,7 +276,7 @@ void Player::updateEdge() {
     }
 
     if (checkForYEdge()) {
-        audio.PlaySoundFile("BorderHit");
+        AudioEngine::PlaySoundFile("BorderHit");
         bounceY();
 
         if (m_Location.y > Window::GetWindowSize().y / 2) {
@@ -298,7 +300,7 @@ void Player::updateEdge() {
     }
 
     if (rectangleIntersect(m_InsideBorder)) {
-        audio.PlaySoundFile("BorderHit");
+        AudioEngine::PlaySoundFile("BorderHit");
 
         int maxborder = m_InsideBorder.x + m_InsideBorder.w - 1;
         if (valueInRange(m_Location.x, m_InsideBorder.x, maxborder)) {
@@ -358,7 +360,7 @@ void Player::updateRotationThrust() {
     if (m_Thrust) {
         // Play thrust sound.
         if (m_ThrustChannel == -1) {
-            m_ThrustChannel = audio.PlaySoundFile("Thrust");
+            m_ThrustChannel = AudioEngine::PlaySoundFile("Thrust");
         }
 
         if (m_Velocity.x > m_MaxThrust)
@@ -378,7 +380,7 @@ void Player::updateRotationThrust() {
     } else {
         // Turn off thrust sound.
         if (m_ThrustChannel != -1) {
-            audio.StopChannel(m_ThrustChannel);
+            AudioEngine::StopChannel(m_ThrustChannel);
             m_ThrustChannel = -1;
         }
 
