@@ -56,8 +56,23 @@ void InputManager::Update() {
                 SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT) != 0;
             mGamepadButtonsCurrent[GAMEPAD_BUTTON_LEFT_FACE_RIGHT] = 
                 SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_DPAD_UP] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_DPAD_DOWN] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN) != 0;
             mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_TRIGGER_1] = 
                 SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) != 0;
+            
+            // Debug: Check for alternative button mappings that might work for PS controllers
+            static int debugCounter = 0;
+            debugCounter++;
+            if (debugCounter % 180 == 0) { // Every 3 seconds
+                std::cout << "=== SDL Button State Debug ===" << std::endl;
+                std::cout << "START button: " << (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START) ? "PRESSED" : "released") << std::endl;
+                std::cout << "BACK button: " << (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK) ? "PRESSED" : "released") << std::endl;
+                std::cout << "GUIDE button: " << (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_GUIDE) ? "PRESSED" : "released") << std::endl;
+                std::cout << "MISC1 button: " << (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_MISC1) ? "PRESSED" : "released") << std::endl;
+            }
         }
     }
     
@@ -264,6 +279,8 @@ SDL_GameControllerButton InputManager::mapGamepadButton(int button) {
         case GAMEPAD_BUTTON_MIDDLE_RIGHT: return SDL_CONTROLLER_BUTTON_START;
         case GAMEPAD_BUTTON_LEFT_FACE_LEFT: return SDL_CONTROLLER_BUTTON_DPAD_LEFT;
         case GAMEPAD_BUTTON_LEFT_FACE_RIGHT: return SDL_CONTROLLER_BUTTON_DPAD_RIGHT;
+        case GAMEPAD_BUTTON_DPAD_UP: return SDL_CONTROLLER_BUTTON_DPAD_UP;
+        case GAMEPAD_BUTTON_DPAD_DOWN: return SDL_CONTROLLER_BUTTON_DPAD_DOWN;
         case GAMEPAD_BUTTON_RIGHT_TRIGGER_1: return SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
         case GAMEPAD_BUTTON_RIGHT_FACE_DOWN: return SDL_CONTROLLER_BUTTON_A;  // X button on PS4/5
         case GAMEPAD_BUTTON_RIGHT_FACE_LEFT: return SDL_CONTROLLER_BUTTON_X;  // Square button on PS4/5

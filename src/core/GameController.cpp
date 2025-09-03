@@ -325,6 +325,21 @@ void GameController::handleInput() {
         }
     }
 
+    // Controller new game controls - Options button starts new game
+    if (InputManager::IsControllerConnected()) {
+        static bool previousOptionsState = false;
+        bool currentOptionsState = InputManager::IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_RIGHT); // Options button
+        
+        // Edge detection for Options button
+        if (currentOptionsState && !previousOptionsState) {
+            // Only allow new game when player is not active (game over, menu screens)
+            if (!pThePlayer->getActive()) {
+                newGame();
+            }
+        }
+        previousOptionsState = currentOptionsState;
+    }
+
     // Block player movement and firing during warp transition
     if (m_WarpActive) {
         // Apply disabled input states during warp
@@ -373,13 +388,7 @@ void GameController::handleInput() {
         int gamepadId = 0; // InputManager handles controller detection internally
 
         // === GAME CONTROLS (work during warp) ===
-        // Options button for new game - only when player is not active (game over, menu screens)
-        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) { // Options/Start
-            if (!pThePlayer->getActive()) {
-                // Only when not in active gameplay - start new game
-                newGame();
-            }
-        }
+        // Note: Options button for new game is now handled in main controller logic with edge detection
 
         // === TURNING CONTROLS ===
         // Method 1: Left analog stick (preferred for smooth control)
@@ -1252,24 +1261,75 @@ void GameController::handlePauseInput() {
     if (InputManager::IsControllerConnected()) {
         int gamepadId = 0; // InputManager handles controller detection internally
         
-        // Options button for pause during gameplay
-        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) { // Options/Start
-            if (pThePlayer->getActive() && m_State == -1) {
-                // During active gameplay - pause the game
-                std::cout << "Options button detected! Calling togglePause()..." << std::endl;
-                togglePause();
-                return;
+        // Static variables for edge detection (prevent rapid toggling)
+        static bool lastOptionsButtonState = false;
+        static bool lastShareButtonState = false;
+        
+        // Debug: Check all relevant buttons to see which ones are working
+        static int debugCounter = 0;
+        debugCounter++;
+        if (debugCounter % 120 == 0) { // Every 2 seconds
+            std::cout << "=== Controller Debug Info ===" << std::endl;
+            std::cout << "Controller: " << InputManager::GetControllerName() << std::endl;
+            std::cout << "Player active: " << pThePlayer->getActive() << ", Game state: " << m_State << ", Paused: " << m_IsPaused << std::endl;
+            
+            // Test all middle buttons
+            if (InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
+                std::cout << "MIDDLE_RIGHT (Options/Start) is DOWN" << std::endl;
+            }
+            if (InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) {
+                std::cout << "MIDDLE_LEFT (Share/Select) is DOWN" << std::endl;
             }
         }
+        
+        // Use edge detection for pause buttons (only trigger on press, not hold)
+        bool currentOptionsState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+        bool currentShareState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT);
+        
+        bool optionsPressed = currentOptionsState && !lastOptionsButtonState;
+        bool sharePressed = currentShareState && !lastShareButtonState;
+        
+        // Update last states
+        lastOptionsButtonState = currentOptionsState;
+        lastShareButtonState = currentShareState;
+        
+        if (optionsPressed) {
+            std::cout << "*** MIDDLE_RIGHT (Options) button PRESSED detected! ***" << std::endl;
+        }
+        if (sharePressed) {
+            std::cout << "*** MIDDLE_LEFT (Share) button PRESSED detected! ***" << std::endl;
+        }
+        
+        // Options button for RESUME game (start new game logic moved to main update)
+        if (optionsPressed) {
+            std::cout << "*** Options button pressed - checking for resume ***" << std::endl;
+            std::cout << "Player active: " << pThePlayer->getActive() << ", Paused: " << m_IsPaused << std::endl;
+            if (pThePlayer->getActive() && m_IsPaused) {
+                // Game is paused - resume
+                std::cout << "Resuming game with Options button!" << std::endl;
+                togglePause(); // This will unpause
+                return;
+            } else {
+                std::cout << "Options pressed but not in pausable state - doing nothing" << std::endl;
+            }
+            // Note: New game logic is now handled in main update method before handlePauseInput
+        }
 
-        // Share button for pause during active gameplay (alternative)
-        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) { // Share/Select
-            // Only trigger pause during active gameplay
-            if (pThePlayer->getActive() && m_State == -1) {
-                std::cout << "Share button detected! Calling togglePause()..." << std::endl;
+        // Share button for PAUSE/UNPAUSE during active gameplay
+        if (sharePressed) {
+            std::cout << "Share button pressed - checking for pause/unpause..." << std::endl;
+            if (pThePlayer->getActive() && !m_IsPaused) {
+                // During active gameplay - pause the game
+                std::cout << "Pausing game with Share button!" << std::endl;
+                togglePause();
+                return;
+            } else if (pThePlayer->getActive() && m_IsPaused) {
+                // Game is paused - unpause it
+                std::cout << "Unpausing game with Share button!" << std::endl;
                 togglePause();
                 return;
             }
+            // If player not active, Share does nothing
         }
     }
     
@@ -1322,44 +1382,54 @@ void GameController::handlePauseInput() {
     }
     lastSelectKeyState = currentSelectKeyState;
     
-    // Handle controller input for pause menu
+    // Handle controller input for pause menu with manual edge detection
     if (InputManager::IsControllerConnected()) {
         int gamepadId = 0; // InputManager handles controller detection internally
         
-        // D-pad up or left stick up
-        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_UP)) {
+        // Static variables for edge detection (similar to keyboard input above)
+        static bool lastDpadUpState = false;
+        static bool lastDpadDownState = false;
+        static bool lastSelectButtonState = false;
+        
+        // D-pad up navigation with edge detection
+        bool currentDpadUpState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_DPAD_UP);
+        if (currentDpadUpState && !lastDpadUpState) {
             pPauseMenu->handleUp();
         }
+        lastDpadUpState = currentDpadUpState;
         
-        // D-pad down or left stick down
-        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_DOWN)) {
+        // D-pad down navigation with edge detection
+        bool currentDpadDownState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_DPAD_DOWN);
+        if (currentDpadDownState && !lastDpadDownState) {
             pPauseMenu->handleDown();
         }
+        lastDpadDownState = currentDpadDownState;
         
-        // Face buttons (X, A) for select
-        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_A) || 
-            InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_X)) {
+        // Face buttons (X, A) for select with edge detection
+        bool currentSelectButtonState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_A) || 
+                                       InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_X);
+        if (currentSelectButtonState && !lastSelectButtonState) {
             PauseMenu::MENU_OPTION selectedOption = pPauseMenu->getSelectedOption();
-                
-                if (selectedOption == PauseMenu::RESUME) {
-                    // Resume the game directly with explicit state management
+            
+            if (selectedOption == PauseMenu::RESUME) {
+                // Resume the game directly with explicit state management
+                pPauseMenu->hide();
+                m_IsPaused = false;
+                // Explicitly ensure the menu is not visible
+                if (pPauseMenu->isVisible()) {
                     pPauseMenu->hide();
-                    m_IsPaused = false;
-                    // Explicitly ensure the menu is not visible
-                    if (pPauseMenu->isVisible()) {
-                        pPauseMenu->hide();
-                    }
-                } else if (selectedOption == PauseMenu::QUIT) {
-                    // End the game the same way as when player runs out of lives
-                    pPauseMenu->hide();
-                    pThePlayer->setActive(false);
-                    pTheBorders->resetGridBackground(); // Reset grid distortion when player becomes inactive
-                    pStatus->setState(StatusDisplay::APP_GAMEOVER);
-                    m_State = 1;
-                    m_IsPaused = false; // Unpause to allow game over state to display
                 }
+            } else if (selectedOption == PauseMenu::QUIT) {
+                // End the game the same way as when player runs out of lives
+                pPauseMenu->hide();
+                pThePlayer->setActive(false);
+                pTheBorders->resetGridBackground(); // Reset grid distortion when player becomes inactive
+                pStatus->setState(StatusDisplay::APP_GAMEOVER);
+                m_State = 1;
+                m_IsPaused = false; // Unpause to allow game over state to display
             }
         }
+        lastSelectButtonState = currentSelectButtonState;
     }
 }
 
@@ -1394,3 +1464,5 @@ omegarace::Vector2f omegarace::GameController::getPlayerPosition() const {
 bool omegarace::GameController::isPlayerActive() const {
     return pThePlayer && pThePlayer->getActive() && !m_WarpActive;
 }
+
+} // namespace omegarace
