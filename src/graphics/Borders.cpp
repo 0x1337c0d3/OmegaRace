@@ -15,8 +15,8 @@ Borders::Borders() {
     // More subtle dark blue-cyan grid color (much more muted)
     m_GridColor.red = 0;
     m_GridColor.green = 30; // Reduced from 100 to 30
-    m_GridColor.blue = 50;  // Reduced from 150 to 50
-    m_GridColor.alpha = 40; // Reduced from 120 to 40 for much more subtlety
+    m_GridColor.blue = 150;  // Reduced from 150 to 50
+    m_GridColor.alpha = 40; // Reduced from 40 to 15 for much more subtlety to avoid status display interference
 }
 
 Borders::~Borders() {
@@ -25,7 +25,7 @@ Borders::~Borders() {
 void Borders::initialize() {
     pTimer->start();
 
-    lineColor.red = 255;
+    lineColor.red = 0;
     lineColor.green = 255;
     lineColor.blue = 255;
     lineColor.alpha = 255;
@@ -36,7 +36,7 @@ void Borders::initialize() {
     borderColor.alpha = 255;
 
     int InsideWidth = Window::GetWindowSize().x * 0.666;
-    int InsideHight = Window::GetWindowSize().y * 0.25;
+    int InsideHight = Window::GetWindowSize().y * 0.24;  // Reduced from 0.25 to 0.24 to avoid bottom clipping
     int InsideLeft = Window::GetWindowSize().x / 2 - InsideWidth / 2;
     int InsideRight = Window::GetWindowSize().x / 2 + InsideWidth / 2;
     int InsideTop = Window::GetWindowSize().y / 2 - InsideHight / 2;

@@ -141,6 +141,7 @@ set(GRAPHICS_SOURCES
     src/graphics/StatusDisplay.cpp
     src/graphics/Letter.cpp
     src/graphics/Number.cpp
+    src/graphics/PauseMenu.cpp
 )
 
 set(AUDIO_SOURCES
@@ -266,13 +267,121 @@ endif()
 
 # Resource handling
 if(PLATFORM_MACOS)
-    # Copy resources to app bundle
+    # Define shader compiler variables
+    set(SHADERC_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/_deps/bgfx.cmake-build/cmake/bgfx/shaderc")
+    set(BGFX_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps/bgfx.cmake-src/bgfx/src")
+    set(SHADER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders")
+    set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+    
+    # Create output directories for different platforms
+    file(MAKE_DIRECTORY "${SHADER_OUTPUT_DIR}/metal")
+    file(MAKE_DIRECTORY "${SHADER_OUTPUT_DIR}/glsl")
+    file(MAKE_DIRECTORY "${SHADER_OUTPUT_DIR}/spirv")
+    
+    # Shader compilation function
+    function(compile_shader SHADER_NAME SHADER_TYPE)
+        set(SHADER_SRC "${SHADER_SOURCE_DIR}/${SHADER_NAME}.sc")
+        set(VARYING_DEF "${SHADER_SOURCE_DIR}/varying.def.sc")
+        set(SHADER_METAL "${SHADER_OUTPUT_DIR}/metal/${SHADER_NAME}.bin")
+        set(SHADER_GLSL "${SHADER_OUTPUT_DIR}/glsl/${SHADER_NAME}.bin")
+        set(SHADER_SPIRV "${SHADER_OUTPUT_DIR}/spirv/${SHADER_NAME}.bin")
+        
+        # Compile for Metal (macOS)
+        add_custom_command(
+            OUTPUT ${SHADER_METAL}
+            COMMAND ${SHADERC_EXECUTABLE}
+                -f ${SHADER_SRC}
+                -o ${SHADER_METAL}
+                --type ${SHADER_TYPE}
+                --platform osx
+                --profile metal
+                -i ${BGFX_INCLUDE_DIR}
+                --varyingdef ${VARYING_DEF}
+            DEPENDS ${SHADER_SRC} ${VARYING_DEF} shaderc
+            COMMENT "Compiling ${SHADER_NAME} for Metal"
+        )
+        
+        # Compile for OpenGL (cross-platform)
+        add_custom_command(
+            OUTPUT ${SHADER_GLSL}
+            COMMAND ${SHADERC_EXECUTABLE}
+                -f ${SHADER_SRC}
+                -o ${SHADER_GLSL}
+                --type ${SHADER_TYPE}
+                --platform linux
+                --profile 120
+                -i ${BGFX_INCLUDE_DIR}
+                --varyingdef ${VARYING_DEF}
+            DEPENDS ${SHADER_SRC} ${VARYING_DEF} shaderc
+            COMMENT "Compiling ${SHADER_NAME} for OpenGL"
+        )
+        
+        # Compile for Vulkan/SPIRV
+        add_custom_command(
+            OUTPUT ${SHADER_SPIRV}
+            COMMAND ${SHADERC_EXECUTABLE}
+                -f ${SHADER_SRC}
+                -o ${SHADER_SPIRV}
+                --type ${SHADER_TYPE}
+                --platform linux
+                --profile spirv
+                -i ${BGFX_INCLUDE_DIR}
+                --varyingdef ${VARYING_DEF}
+            DEPENDS ${SHADER_SRC} ${VARYING_DEF} shaderc
+            COMMENT "Compiling ${SHADER_NAME} for Vulkan"
+        )
+        
+        # Add to global shader list
+        list(APPEND COMPILED_SHADERS ${SHADER_METAL} ${SHADER_GLSL} ${SHADER_SPIRV})
+        set(COMPILED_SHADERS ${COMPILED_SHADERS} PARENT_SCOPE)
+    endfunction()
+    
+    # Initialize shader list
+    set(COMPILED_SHADERS "")
+    
+    # Compile all shaders
+    compile_shader("vs_line" "vertex")
+    compile_shader("fs_line" "fragment")
+    compile_shader("vs_volumetric_line" "vertex")
+    compile_shader("fs_volumetric_line" "fragment")
+    
+    # Create shader compilation target
+    add_custom_target(compile_shaders ALL
+        DEPENDS ${COMPILED_SHADERS}
+        COMMENT "Compiling all shaders"
+    )
+    
+    # Make sure shaders are compiled before the main target
+    add_dependencies(${PROJECT_NAME} compile_shaders)
+    
+    # Copy other resources to app bundle (excluding shaders directory to avoid overwriting compiled shaders)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory 
             "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources"
         COMMAND ${CMAKE_COMMAND} -E copy_directory 
-            "${CMAKE_CURRENT_SOURCE_DIR}/resources" 
-            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources"
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/audio" 
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/audio"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory 
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos" 
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/macos"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.png"
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/icon.png"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon_1024.png"
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/icon_1024.png"
+        COMMENT "Copying resources to app bundle (excluding shaders)"
+    )
+    
+    # Create a separate target for copying shaders that depends on compiled shaders
+    add_custom_target(copy_shaders ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory 
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/shaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory 
+            "${SHADER_OUTPUT_DIR}" 
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/shaders"
+        DEPENDS ${COMPILED_SHADERS} ${PROJECT_NAME}
+        COMMENT "Copying compiled shaders to app bundle"
     )
     
     # Copy app icon and convert to ICNS format

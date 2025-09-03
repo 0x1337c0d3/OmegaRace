@@ -119,16 +119,6 @@ void Game::handleInput() {
     // Handle controller connection/disconnection
     // Raylib automatically handles controller detection, so less complex than SDL
 
-    // Handle pause toggle (P key)
-    if (Window::IsKeyPressed(KEY_P)) {
-        pGameController->onPause(pTimer->paused());
-
-        if (pTimer->paused())
-            pTimer->unpause();
-        else
-            pTimer->pause();
-    }
-
     // Handle fullscreen toggle (F11 key)
     if (Window::IsKeyPressed(KEY_F11)) {
         Window::ToggleFullscreen();

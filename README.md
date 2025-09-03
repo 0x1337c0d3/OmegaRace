@@ -4,7 +4,54 @@ A modern recreation of the classic 1981 arcade game Omega Race, built with C++ a
 
 ![Game Version](https://img.shields.io/badge/version-1.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Cross--Platform-lightgrey.svg)
-![Language](https://img.shields.io/badge/language-C++-blue.svg)
+![Language](https://img.shields.io/badge/l### Background Grid
+- **Grid Alpha** - Fine-tune background grid transparency to minimize UI interference
+- **Grid Distortion** - Optimize grid distortion effects for performance
+- **Rendering Order** - Ensure proper depth sorting between grid, game objects, and UI
+
+## 🎮 TODO - Game Features
+
+### Power-Up System
+The following power-ups are planned for implementation:
+
+#### Core Power-Ups
+- **Extra Life** - Grants an additional ship/life to the player
+  - Rare spawn rate to maintain game balance
+  - Visual indicator when collected
+  - Audio feedback for collection
+
+- **Homing Missiles** - Secondary weapon system with target-seeking projectiles
+  - Activate with secondary fire button (different from primary weapon)
+  - Limited ammunition (3-5 missiles per power-up)
+  - Smart targeting system that locks onto nearest enemy
+  - Visual trail and guidance system for missiles
+  - Enhanced damage compared to regular shots
+
+- **Nuclear Weapon** - Screen-clearing super weapon
+  - Destroys all enemies currently on screen
+  - Massive explosion effect with screen shake
+  - Very rare spawn rate for balance
+  - Audio and visual warning before detonation
+  - Bonus points for enemies destroyed
+
+- **Ship Shield** - Protective barrier system
+  - Absorbs damage from enemy collisions and projectiles
+  - Dual degradation system:
+    - Reduces strength when player takes hits
+    - Slowly depletes over time (timer-based)
+  - Visual shield effect around player ship
+  - Audio feedback for shield activation/depletion
+  - Multiple hit protection before destruction
+
+#### Power-Up Mechanics
+- **Spawn System** - Random appearance after destroying enemy waves
+- **Collection** - Fly into power-up to collect
+- **Visual Design** - Distinct icons and colors for each power-up type
+- **Rarity Levels** - Balance power vs. availability
+- **Duration Indicators** - Show remaining time for temporary effects
+- **Stacking Rules** - Define which power-ups can be combined
+
+## 📞 Supporte-C++-blue.svg)
 ![Graphics](https://img.shields.io/badge/graphics-BGFX-red.svg)
 ![Framework](https://img.shields.io/badge/framework-SDL2-green.svg)
 
@@ -304,7 +351,31 @@ Potential enhancements:
 - Online leaderboards
 - Additional visual effects
 
-## 📞 Support
+## � TODO - Graphics Refinements
+
+The following graphics improvements are planned for future development:
+
+### Alpha Blending Issues
+- **Letters and Numbers** - Fix alpha blending artifacts where text elements interact with background grid
+- **Status Display** - Improve rendering order to prevent grid bleed-through on UI elements
+- **Text Clarity** - Ensure text remains crisp and readable over dynamic backgrounds
+
+### Visual Effects Enhancements
+- **Vapour Trail** - Make player ship trail effect more smoky and particle-like
+- **Trail Rendering** - Improve trail opacity and particle distribution for better visual appeal
+- **Particle Density** - Adjust particle count and fade rates for more realistic smoke effect
+
+### Ship Appearance
+- **Ship Color** - Refine player ship color scheme and materials
+- **Ship Glow Effects** - Enhance ship outline and glow effects
+- **Color Consistency** - Ensure ship colors work well with background and effects
+
+### Background Grid
+- **Grid Alpha** - Fine-tune background grid transparency to minimize UI interference
+- **Grid Distortion** - Optimize grid distortion effects for performance
+- **Rendering Order** - Ensure proper depth sorting between grid, game objects, and UI
+
+## �📞 Support
 
 For technical issues or questions:
 - Check the build documentation in `BUILD_README.md`

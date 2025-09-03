@@ -59,6 +59,7 @@ class Window {
 
     // Window management
     static bool ShouldClose();
+    static void SetShouldClose(bool shouldClose);
 
     // Shader support for advanced effects (placeholder)
     static void BeginBloomMode();
@@ -102,13 +103,13 @@ class Window {
 
     // BGFX rendering state
     static bgfx::ViewId mMainView;
+    static bgfx::ViewId mBackgroundView;
     static bgfx::ViewId mBloomView;
     static bgfx::ProgramHandle mBloomProgram;
     static bgfx::ProgramHandle mLineProgram;
     static bgfx::FrameBufferHandle mBloomFrameBuffer;
     static bgfx::TextureHandle mBloomTexture;
     static bgfx::UniformHandle mBloomParams;
-    static bgfx::ProgramHandle m_program;
 
     // Scaling for aspect ratio preservation
     static float mRenderScale;
@@ -123,6 +124,8 @@ class Window {
     // Input state
     static bool mShouldClose;
     static bool mKeysPressed[512]; // SDL_NUM_SCANCODES is typically 512
+    static bool mGamepadButtonsPressed[32]; // Track previous frame gamepad button states
+    static bool mGamepadButtonsCurrent[32]; // Track current frame gamepad button states
 
     static bool mShouldQuit;
 

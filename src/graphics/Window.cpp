@@ -31,11 +31,11 @@ int Window::mWindowedWidth = 1024;
 int Window::mWindowedHeight = 768;
 
 // BGFX rendering state
-bgfx::ViewId Window::mMainView = 0;
-bgfx::ViewId Window::mBloomView = 1;
+bgfx::ViewId Window::mBackgroundView = 0;
+bgfx::ViewId Window::mMainView = 1;
+bgfx::ViewId Window::mBloomView = 2;
 bgfx::ProgramHandle Window::mBloomProgram = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle Window::mLineProgram = BGFX_INVALID_HANDLE;
-bgfx::ProgramHandle Window::m_program = BGFX_INVALID_HANDLE;
 bgfx::FrameBufferHandle Window::mBloomFrameBuffer = BGFX_INVALID_HANDLE;
 bgfx::TextureHandle Window::mBloomTexture = BGFX_INVALID_HANDLE;
 bgfx::UniformHandle Window::mBloomParams = BGFX_INVALID_HANDLE;
@@ -51,6 +51,8 @@ double Window::mDeltaTime = 0.0;
 // Input state
 bool Window::mShouldClose = false;
 bool Window::mKeysPressed[512] = {false};
+bool Window::mGamepadButtonsPressed[32] = {false};
+bool Window::mGamepadButtonsCurrent[32] = {false};
 
 bool Window::mShouldQuit = false;
 
@@ -83,11 +85,13 @@ void Window::Init(int width, int height, std::string title) {
         throw std::runtime_error("Failed to initialize BGFX");
     }
 
-    // Try to load shader program, but continue without it if loading fails
-    m_program = loadProgram("vs_line", "fs_line");
-    if (!bgfx::isValid(m_program)) {
-        std::cout << "Note: Custom line shaders not available, using BGFX built-in rendering" << std::endl;
-        m_program = BGFX_INVALID_HANDLE;
+    // Try to load shader programs, but continue without them if loading fails
+    mLineProgram = loadProgram("vs_line", "fs_line");
+    if (!bgfx::isValid(mLineProgram)) {
+        std::cout << "ERROR: Custom line shaders FAILED to load - using BGFX built-in rendering" << std::endl;
+        mLineProgram = BGFX_INVALID_HANDLE;
+    } else {
+        std::cout << "SUCCESS: Custom line shaders loaded successfully!" << std::endl;
     }
 
     // Set up controller
@@ -152,6 +156,11 @@ bool Window::InitializeBGFX() {
 }
 
 void Window::SetupRenderStates() {
+    // Configure background view to clear the entire screen with black
+    // This ensures no magenta/purple appears in letterboxed areas
+    bgfx::setViewClear(mBackgroundView, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f, 0);
+    bgfx::setViewRect(mBackgroundView, 0, 0, uint16_t(mWindowedWidth), uint16_t(mWindowedHeight));
+
     // Configure main view with black background like the original game
     // Use proper RGBA format for BGFX: 0xRRGGBBAA (black = 0x000000FF)
     bgfx::setViewClear(mMainView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000FF, 1.0f, 0);
@@ -179,13 +188,13 @@ void Window::CreateBloomResources() {
     std::cout << "Created bloom uniform successfully" << std::endl;
 
     // Try to load volumetric line shader program for bloom effects
-    mLineProgram = loadProgram("vs_volumetric_line", "fs_volumetric_line");
-    if (!bgfx::isValid(mLineProgram)) {
+    mBloomProgram = loadProgram("vs_volumetric_line", "fs_volumetric_line");
+    if (!bgfx::isValid(mBloomProgram)) {
         std::cout << "Volumetric line shaders not available, falling back to basic line shaders" << std::endl;
-        mLineProgram = loadProgram("vs_line", "fs_line");
-        if (!bgfx::isValid(mLineProgram)) {
+        mBloomProgram = loadProgram("vs_line", "fs_line");
+        if (!bgfx::isValid(mBloomProgram)) {
             std::cout << "Basic line shaders not available either, using built-in rendering" << std::endl;
-            mLineProgram = BGFX_INVALID_HANDLE;
+            mBloomProgram = BGFX_INVALID_HANDLE;
         }
     } else {
         std::cout << "Successfully loaded volumetric line shaders with bloom support" << std::endl;
@@ -212,11 +221,6 @@ void Window::ShutdownBGFX() {
     if (bgfx::isValid(mLineProgram)) {
         bgfx::destroy(mLineProgram);
         mLineProgram = BGFX_INVALID_HANDLE;
-    }
-
-    if (bgfx::isValid(m_program)) {
-        bgfx::destroy(m_program);
-        m_program = BGFX_INVALID_HANDLE;
     }
 
     if (bgfx::isValid(mBloomFrameBuffer)) {
@@ -378,21 +382,62 @@ void Window::BeginFrame() {
     mRenderOffset.x = (int)((screenWidth - scaledWidth) / 2.0f);
     mRenderOffset.y = (int)((screenHeight - scaledHeight) / 2.0f);
 
-    // Set viewport with letterboxing
+    // Set background view to cover entire screen (fixes magenta background in fullscreen)
+    bgfx::setViewRect(mBackgroundView, 0, 0, uint16_t(screenWidth), uint16_t(screenHeight));
+    
+    // Set viewport with letterboxing for game content
     bgfx::setViewRect(mMainView, uint16_t(mRenderOffset.x), uint16_t(mRenderOffset.y), uint16_t(scaledWidth),
                       uint16_t(scaledHeight));
 }
 
 void Window::EndFrame() {
+    // Submit background view to clear full screen (fixes magenta background in fullscreen)
+    bgfx::touch(mBackgroundView);
+    
     // For multi-threaded mode, just call frame() - BGFX handles threading
     bgfx::frame();
 
     // Clear key pressed state for next frame
     std::fill(std::begin(mKeysPressed), std::end(mKeysPressed), false);
+    
+    // Update gamepad button states for next frame
+    // Copy current state to previous state
+    std::copy(std::begin(mGamepadButtonsCurrent), std::end(mGamepadButtonsCurrent), 
+              std::begin(mGamepadButtonsPressed));
+    
+    // Update current state with actual controller state
+    if (mControllerIndex >= 0) {
+        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+        if (controller) {
+            // Update all face button states
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_DOWN] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_LEFT] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_RIGHT] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_B) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_UP] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_Y) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_MIDDLE_LEFT] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_MIDDLE_RIGHT] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_LEFT_FACE_LEFT] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_LEFT_FACE_RIGHT] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) != 0;
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_TRIGGER_1] = 
+                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) != 0;
+        }
+    }
 }
 
 bool Window::ShouldClose() {
     return mShouldClose;
+}
+
+void Window::SetShouldClose(bool shouldClose) {
+    mShouldClose = shouldClose;
 }
 
 void Window::logError(std::ostream& os, const std::string& msg) {
@@ -409,26 +454,30 @@ void Window::DrawLine(Line* LineLocation, const Color& LineColor) {
     if (!LineLocation)
         return;
 
-    // Pack color as 32-bit ABGR for BGFX
-    uint32_t color = (uint32_t(LineColor.alpha) << 24) | (uint32_t(LineColor.blue) << 16) |
-                     (uint32_t(LineColor.green) << 8) | uint32_t(LineColor.red);
-
-    // Create simple line vertices for basic line rendering
+    // Create simple line vertices with float colors for vec4 shader compatibility
     struct BasicLineVertex {
         float x, y;
-        uint32_t color;
+        float r, g, b, a; // Color as 4 separate floats for vec4 in shader
     };
 
-    BasicLineVertex vertices[2] = {{(float)LineLocation->start.x, (float)LineLocation->start.y, color},
-                                   {(float)LineLocation->end.x, (float)LineLocation->end.y, color}};
+    // Convert Color to normalized float values
+    float r = LineColor.red / 255.0f;
+    float g = LineColor.green / 255.0f;
+    float b = LineColor.blue / 255.0f;
+    float a = LineColor.alpha / 255.0f;
 
-    // Create vertex layout for basic lines (position + color)
+    BasicLineVertex vertices[2] = {
+        {(float)LineLocation->start.x, (float)LineLocation->start.y, r, g, b, a},
+        {(float)LineLocation->end.x, (float)LineLocation->end.y, r, g, b, a}
+    };
+
+    // Create vertex layout for basic lines (position + vec4 color)
     static bgfx::VertexLayout basicLineLayout;
     static bool layoutInitialized = false;
     if (!layoutInitialized) {
         basicLineLayout.begin()
             .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
             .end();
         layoutInitialized = true;
     }
@@ -441,22 +490,16 @@ void Window::DrawLine(Line* LineLocation, const Color& LineColor) {
 
         bgfx::setVertexBuffer(0, &tvb);
 
-        // Set render state for line drawing with alpha blending
-        uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_PT_LINES;
+        uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD | BGFX_STATE_PT_LINES;
         bgfx::setState(state);
-
-        // Use basic line shader program (vs_line + fs_line)
-        if (bgfx::isValid(m_program)) {
-            bgfx::submit(mMainView, m_program);
-        } else {
-            // Fall back to BGFX built-in shader if basic line shader not available
-            bgfx::submit(mMainView, BGFX_INVALID_HANDLE);
-        }
+        
+        bgfx::submit(mMainView, mLineProgram);
     }
 }
 
 void Window::DrawVolumetricLine(Line* LineLocation, const Color& LineColor, float thickness) {
-    DrawVolumetricLineWithBloom(LineLocation, LineColor, thickness, 0.5f);
+    // DrawVolumetricLineWithBloom(LineLocation, LineColor, thickness, 0.5f);
+    DrawLine(LineLocation, LineColor);
 }
 
 void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineColor, float thickness,
@@ -464,9 +507,11 @@ void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineCo
     if (!LineLocation)
         return;
 
-    // Pack color as 32-bit ABGR for BGFX
-    uint32_t color = (uint32_t(LineColor.alpha) << 24) | (uint32_t(LineColor.blue) << 16) |
-                     (uint32_t(LineColor.green) << 8) | uint32_t(LineColor.red);
+    // Convert Color to normalized float values for vec4 shader compatibility
+    float r = LineColor.red / 255.0f;
+    float g = LineColor.green / 255.0f;
+    float b = LineColor.blue / 255.0f;
+    float a = LineColor.alpha / 255.0f;
 
     // Calculate line vector and perpendicular for thickness
     float dx = (float)(LineLocation->end.x - LineLocation->start.x);
@@ -478,34 +523,30 @@ void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineCo
         // For zero-length lines, create a small circle/square at the start point
         float radius = thickness * 0.5f;
 
-        // Create quad vertices for circle/point
+        // Create quad vertices for circle/point with vec4 colors
         struct VolumetricLineVertex {
             float x, y;
-            uint32_t color;
+            float r, g, b, a; // Color as 4 separate floats for vec4 in shader
             float u, v; // Texture coordinates for distance calculation
         };
 
         VolumetricLineVertex vertices[4] = {
-            {(float)LineLocation->start.x - radius, (float)LineLocation->start.y - radius, color, 0.0f,
-             0.0f}, // Top-left
-            {(float)LineLocation->start.x - radius, (float)LineLocation->start.y + radius, color, 0.0f,
-             1.0f}, // Bottom-left
-            {(float)LineLocation->start.x + radius, (float)LineLocation->start.y + radius, color, 1.0f,
-             1.0f}, // Bottom-right
-            {(float)LineLocation->start.x + radius, (float)LineLocation->start.y - radius, color, 1.0f, 0.0f}
-            // Top-right
+            {(float)LineLocation->start.x - radius, (float)LineLocation->start.y - radius, r, g, b, a, 0.0f, 0.0f}, // Top-left
+            {(float)LineLocation->start.x - radius, (float)LineLocation->start.y + radius, r, g, b, a, 0.0f, 1.0f}, // Bottom-left
+            {(float)LineLocation->start.x + radius, (float)LineLocation->start.y + radius, r, g, b, a, 1.0f, 1.0f}, // Bottom-right
+            {(float)LineLocation->start.x + radius, (float)LineLocation->start.y - radius, r, g, b, a, 1.0f, 0.0f}  // Top-right
         };
 
         // Index buffer for quad (two triangles)
         uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
 
-        // Create vertex layout for volumetric lines
+        // Create vertex layout for volumetric lines with vec4 colors
         static bgfx::VertexLayout volumetricLayout;
         static bool layoutInitialized = false;
         if (!layoutInitialized) {
             volumetricLayout.begin()
                 .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
                 .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
                 .end();
             layoutInitialized = true;
@@ -521,8 +562,9 @@ void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineCo
 
             bgfx::setVertexBuffer(0, &tvb);
             bgfx::setIndexBuffer(&tib);
-            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA);
-            bgfx::submit(mMainView, mLineProgram);
+            // Use additive blending for classic vector glow on point explosions
+            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD);
+            bgfx::submit(mMainView, mBloomProgram);
         }
         return; // Early return for zero-length lines
     }
@@ -536,18 +578,18 @@ void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineCo
         float px = -dy * (thickness * 0.5f);
         float py = dx * (thickness * 0.5f);
 
-        // Create quad vertices for thick line with texture coordinates
+        // Create quad vertices for thick line with texture coordinates and vec4 colors
         struct VolumetricLineVertex {
             float x, y;
-            uint32_t color;
+            float r, g, b, a; // Color as 4 separate floats for vec4 in shader
             float u, v; // Texture coordinates for distance calculation
         };
 
         VolumetricLineVertex vertices[4] = {
-            {(float)LineLocation->start.x + px, (float)LineLocation->start.y + py, color, 0.0f, 0.0f}, // Top-left
-            {(float)LineLocation->start.x - px, (float)LineLocation->start.y - py, color, 0.0f, 1.0f}, // Bottom-left
-            {(float)LineLocation->end.x - px, (float)LineLocation->end.y - py, color, 1.0f, 1.0f},     // Bottom-right
-            {(float)LineLocation->end.x + px, (float)LineLocation->end.y + py, color, 1.0f, 0.0f}      // Top-right
+            {(float)LineLocation->start.x + px, (float)LineLocation->start.y + py, r, g, b, a, 0.0f, 0.0f}, // Top-left
+            {(float)LineLocation->start.x - px, (float)LineLocation->start.y - py, r, g, b, a, 0.0f, 1.0f}, // Bottom-left
+            {(float)LineLocation->end.x - px, (float)LineLocation->end.y - py, r, g, b, a, 1.0f, 1.0f},     // Bottom-right
+            {(float)LineLocation->end.x + px, (float)LineLocation->end.y + py, r, g, b, a, 1.0f, 0.0f}      // Top-right
         };
 
         // Index buffer for quad (two triangles)
@@ -561,55 +603,28 @@ void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineCo
             // Layout for volumetric shaders (with texture coordinates)
             volumetricLayout.begin()
                 .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
                 .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
                 .end();
 
             // Layout for basic shaders (without texture coordinates)
             basicLayout.begin()
                 .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
                 .end();
 
             layoutsInitialized = true;
         }
 
-        // Choose layout based on shader availability
-        bool useVolumetricShader = bgfx::isValid(mLineProgram);
-        const bgfx::VertexLayout& layout = useVolumetricShader ? volumetricLayout : basicLayout;
-
-        // Set vertex size based on shader type
-        struct BasicLineVertex {
-            float x, y;
-            uint32_t color;
-        };
-        uint32_t vertexSize = useVolumetricShader ? sizeof(VolumetricLineVertex) : sizeof(BasicLineVertex);
-
         // Allocate transient buffers
-        if (bgfx::getAvailTransientVertexBuffer(4, layout) >= 4 && bgfx::getAvailTransientIndexBuffer(6) >= 6) {
-
+        if (bgfx::getAvailTransientVertexBuffer(4, volumetricLayout) >= 4 && bgfx::getAvailTransientIndexBuffer(6) >= 6) {
             bgfx::TransientVertexBuffer tvb;
             bgfx::TransientIndexBuffer tib;
-            bgfx::allocTransientVertexBuffer(&tvb, 4, layout);
+            bgfx::allocTransientVertexBuffer(&tvb, 4, volumetricLayout);
             bgfx::allocTransientIndexBuffer(&tib, 6);
 
             // Copy vertex data
-            if (useVolumetricShader) {
-                memcpy(tvb.data, vertices, sizeof(vertices));
-            } else {
-                // Copy only position and color for basic shaders
-                struct BasicVertex {
-                    float x, y;
-                    uint32_t color;
-                };
-                BasicVertex* basicVertices = (BasicVertex*)tvb.data;
-                for (int i = 0; i < 4; ++i) {
-                    basicVertices[i].x = vertices[i].x;
-                    basicVertices[i].y = vertices[i].y;
-                    basicVertices[i].color = vertices[i].color;
-                }
-            }
-
+            memcpy(tvb.data, vertices, sizeof(vertices));
             memcpy(tib.data, indices, sizeof(indices));
 
             // Set buffers
@@ -617,27 +632,18 @@ void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineCo
             bgfx::setIndexBuffer(&tib);
 
             // Set bloom parameters if using volumetric shader
-            if (useVolumetricShader && bgfx::isValid(mBloomParams)) {
-                float bloomParams[4] = {
-                    bloomIntensity * 1.5f, // x: bloom intensity (moderate boost)
-                    1.2f,                  // y: bloom radius
-                    0.5f,                  // z: bloom threshold
-                    thickness              // w: line thickness
-                };
-                bgfx::setUniform(mBloomParams, bloomParams);
-            }
+            float bloomParams[4] = {
+                bloomIntensity * 1.5f, // x: bloom intensity (moderate boost)
+                1.2f,                  // y: bloom radius
+                0.5f,                  // z: bloom threshold
+                thickness              // w: line thickness
+            };
+            bgfx::setUniform(mBloomParams, bloomParams);
 
-            // Set render state for triangles with alpha blending
-            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA;
+            // Set render state for triangles with additive blending for classic vector glow
+            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD;
             bgfx::setState(state);
-
-            // Submit with appropriate shader program
-            if (bgfx::isValid(mLineProgram)) {
-                bgfx::submit(mMainView, mLineProgram);
-            } else {
-                // Use BGFX_INVALID_HANDLE to trigger built-in shader
-                bgfx::submit(mMainView, BGFX_INVALID_HANDLE);
-            }
+            bgfx::submit(mMainView, mBloomProgram);
         }
     }
 }
@@ -650,16 +656,25 @@ void Window::DrawPoint(Vector2i* Location, const Color& PointColor) {
     rect.y = (float)Location->y;
     rect.width = 1.0f;
     rect.height = 1.0f;
-    DrawRect(&rect, PointColor);
+    // DrawRect(&rect, PointColor);
 }
 
 void Window::DrawRect(const Rectangle* RectangleLocation, const Color& RectangleColor) {
     if (!RectangleLocation)
         return;
+    // {
+    //     // Draw rectangle outline using DrawLine for each edge
+    //     Line top    = {{(int)RectangleLocation->x, (int)RectangleLocation->y}, {(int)(RectangleLocation->x + RectangleLocation->width), (int)RectangleLocation->y}};
+    //     Line right  = {{(int)(RectangleLocation->x + RectangleLocation->width), (int)RectangleLocation->y}, {(int)(RectangleLocation->x + RectangleLocation->width), (int)(RectangleLocation->y + RectangleLocation->height)}};
+    //     Line bottom = {{(int)(RectangleLocation->x + RectangleLocation->width), (int)(RectangleLocation->y + RectangleLocation->height)}, {(int)RectangleLocation->x, (int)(RectangleLocation->y + RectangleLocation->height)}};
+    //     Line left   = {{(int)RectangleLocation->x, (int)(RectangleLocation->y + RectangleLocation->height)}, {(int)RectangleLocation->x, (int)RectangleLocation->y}};
 
-    // Pack color as 32-bit ABGR for BGFX
-    uint32_t color = (uint32_t(RectangleColor.alpha) << 24) | (uint32_t(RectangleColor.blue) << 16) |
-                     (uint32_t(RectangleColor.green) << 8) | uint32_t(RectangleColor.red);
+    //     DrawLine(&top, RectangleColor);
+    //     DrawLine(&right, RectangleColor);
+    //     DrawLine(&bottom, RectangleColor);
+    //     DrawLine(&left, RectangleColor);
+    // return;
+    // }
 
     // Rectangle corners
     float left = RectangleLocation->x;
@@ -667,17 +682,9 @@ void Window::DrawRect(const Rectangle* RectangleLocation, const Color& Rectangle
     float top = RectangleLocation->y;
     float bottom = RectangleLocation->y + RectangleLocation->height;
 
-    struct LineVertex {
+    struct Vertex {
         float x, y;
-        uint32_t color;
-    };
-
-    // 4 lines: top, right, bottom, left
-    LineVertex vertices[8] = {
-        {left, top, color},     {right, top, color},    // Top
-        {right, top, color},    {right, bottom, color}, // Right
-        {right, bottom, color}, {left, bottom, color},  // Bottom
-        {left, bottom, color},  {left, top, color}      // Left
+        float r, g, b, a; // Color as 4 separate floats for vec4 in shader
     };
 
     static bgfx::VertexLayout layout;
@@ -685,23 +692,65 @@ void Window::DrawRect(const Rectangle* RectangleLocation, const Color& Rectangle
     if (!layoutInitialized) {
         layout.begin()
             .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
             .end();
         layoutInitialized = true;
     }
 
+    // Convert Color to normalized float values for vec4 shader compatibility
+    float r = RectangleColor.red / 255.0f;
+    float g = RectangleColor.green / 255.0f;
+    float b = RectangleColor.blue / 255.0f;
+    float a = RectangleColor.alpha / 255.0f; // Use actual alpha from input color
+    
+    // Draw filled rectangle (two triangles) with solid black fill and proper alpha
+    Vertex fillVertices[4] = {
+                {left, top, 0, 0, 0, a},       // Top-left - black fill with alpha
+        {right, top, 0, 0, 0, a},      // Top-right - black fill with alpha
+        {left, bottom, 0, 0, 0, a},    // Bottom-left - black fill with alpha
+        {right, bottom, 0, 0, 0, a}    // Bottom-right - black fill with alpha
+    };
+    
+    uint16_t fillIndices[6] = {0, 1, 2, 1, 3, 2}; // Two triangles
+
+    if (bgfx::getAvailTransientVertexBuffer(4, layout) >= 4 && bgfx::getAvailTransientIndexBuffer(6) >= 6) {
+        bgfx::TransientVertexBuffer fillTvb;
+        bgfx::TransientIndexBuffer fillTib;
+        bgfx::allocTransientVertexBuffer(&fillTvb, 4, layout);
+        bgfx::allocTransientIndexBuffer(&fillTib, 6);
+        
+        memcpy(fillTvb.data, fillVertices, sizeof(fillVertices));
+        memcpy(fillTib.data, fillIndices, sizeof(fillIndices));
+        
+        bgfx::setVertexBuffer(0, &fillTvb);
+        bgfx::setIndexBuffer(&fillTib);
+        
+        // Enable alpha blending for transparency support
+        uint64_t fillState = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LESS 
+                           | BGFX_STATE_BLEND_ALPHA;
+        bgfx::setState(fillState);        
+        bgfx::submit(mMainView, mLineProgram);
+    }
+
+    // Then, draw outline (4 lines: top, right, bottom, left) 
+    Vertex outlineVertices[8] = {
+        {left, top, r, g, b, a},     {right, top, r, g, b, a},    // Top - with alpha
+        {right, top, r, g, b, a},    {right, bottom, r, g, b, a}, // Right - with alpha
+        {right, bottom, r, g, b, a}, {left, bottom, r, g, b, a},  // Bottom - with alpha
+        {left, bottom, r, g, b, a},  {left, top, r, g, b, a}      // Left - with alpha
+    };
+
     if (bgfx::getAvailTransientVertexBuffer(8, layout) >= 8) {
-        bgfx::TransientVertexBuffer tvb;
-        bgfx::allocTransientVertexBuffer(&tvb, 8, layout);
-        memcpy(tvb.data, vertices, sizeof(vertices));
-        bgfx::setVertexBuffer(0, &tvb, 0, 8);
-        uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_PT_LINES;
-        bgfx::setState(state);
-        if (bgfx::isValid(m_program)) {
-            bgfx::submit(mMainView, m_program);
-        } else {
-            bgfx::submit(mMainView, BGFX_INVALID_HANDLE);
-        }
+        bgfx::TransientVertexBuffer outlineTvb;
+        bgfx::allocTransientVertexBuffer(&outlineTvb, 8, layout);
+        memcpy(outlineTvb.data, outlineVertices, sizeof(outlineVertices));
+        bgfx::setVertexBuffer(0, &outlineTvb, 0, 8);
+        
+        // Lines render with alpha blending enabled
+        uint64_t outlineState = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_PT_LINES | BGFX_STATE_DEPTH_TEST_LESS 
+                              | BGFX_STATE_BLEND_ALPHA;
+        bgfx::setState(outlineState);
+        bgfx::submit(mMainView, mLineProgram);
     }
 }
 
@@ -869,36 +918,31 @@ void Window::DrawFullScreenWarp(float intensity, float time) {
     float maxRadius = std::min(GAME_WIDTH, GAME_HEIGHT) * 0.5f * (0.7f + 0.3f * intensity);
     float ringAlpha = 0.5f * intensity;
     float radialAlpha = 0.3f * intensity;
-    float baseHue = fmodf(time * 0.2f, 1.0f);
-
-    // Helper to pack color
-    auto packColor = [](float r, float g, float b, float a) -> uint32_t {
-        return (uint32_t(a * 255) << 24) | (uint32_t(b * 255) << 16) | (uint32_t(g * 255) << 8) | (uint32_t(r * 255));
-    };
+    // Unused variable removed: float baseHue = fmodf(time * 0.2f, 1.0f);
 
     // Draw rings
     for (int i = 1; i <= numRings; ++i) {
         float t = float(i) / (numRings + 1);
         float radius = maxRadius * t * (0.8f + 0.2f * sinf(time + t * 6.28f));
-        uint32_t color = packColor(1.0f, 1.0f, 1.0f, ringAlpha * (1.0f - t * 0.5f));
+        float alpha = ringAlpha * (1.0f - t * 0.5f);
         const int segments = 64;
         struct V {
             float x, y;
-            uint32_t color;
+            float r, g, b, a; // Color as 4 separate floats for vec4 in shader
         };
         V verts[segments * 2];
         for (int s = 0; s < segments; ++s) {
             float a0 = (s) * 2.0f * 3.1415926f / segments;
             float a1 = (s + 1) * 2.0f * 3.1415926f / segments;
-            verts[s * 2 + 0] = {cx + cosf(a0) * radius, cy + sinf(a0) * radius, color};
-            verts[s * 2 + 1] = {cx + cosf(a1) * radius, cy + sinf(a1) * radius, color};
+            verts[s * 2 + 0] = {cx + cosf(a0) * radius, cy + sinf(a0) * radius, 1.0f, 1.0f, 1.0f, alpha};
+            verts[s * 2 + 1] = {cx + cosf(a1) * radius, cy + sinf(a1) * radius, 1.0f, 1.0f, 1.0f, alpha};
         }
         static bgfx::VertexLayout layout;
         static bool layoutInitialized = false;
         if (!layoutInitialized) {
             layout.begin()
                 .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
                 .end();
             layoutInitialized = true;
         }
@@ -907,13 +951,9 @@ void Window::DrawFullScreenWarp(float intensity, float time) {
             bgfx::allocTransientVertexBuffer(&tvb, segments * 2, layout);
             memcpy(tvb.data, verts, sizeof(verts));
             bgfx::setVertexBuffer(0, &tvb, 0, segments * 2);
-            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_PT_LINES;
+            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD | BGFX_STATE_PT_LINES;
             bgfx::setState(state);
-            if (bgfx::isValid(m_program)) {
-                bgfx::submit(mMainView, m_program);
-            } else {
-                bgfx::submit(mMainView, BGFX_INVALID_HANDLE);
-            }
+            bgfx::submit(mMainView, mBloomProgram);
         }
     }
 
@@ -926,18 +966,17 @@ void Window::DrawFullScreenWarp(float intensity, float time) {
         float y0 = cy + sinf(angle) * r0;
         float x1 = cx + cosf(angle) * r1;
         float y1 = cy + sinf(angle) * r1;
-        uint32_t color = packColor(1.0f, 1.0f, 1.0f, radialAlpha);
         struct V {
             float x, y;
-            uint32_t color;
+            float r, g, b, a; // Color as 4 separate floats for vec4 in shader
         };
-        V verts[2] = {{x0, y0, color}, {x1, y1, color}};
+        V verts[2] = {{x0, y0, 1.0f, 1.0f, 1.0f, radialAlpha}, {x1, y1, 1.0f, 1.0f, 1.0f, radialAlpha}};
         static bgfx::VertexLayout layout;
         static bool layoutInitialized = false;
         if (!layoutInitialized) {
             layout.begin()
                 .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
                 .end();
             layoutInitialized = true;
         }
@@ -946,13 +985,9 @@ void Window::DrawFullScreenWarp(float intensity, float time) {
             bgfx::allocTransientVertexBuffer(&tvb, 2, layout);
             memcpy(tvb.data, verts, sizeof(verts));
             bgfx::setVertexBuffer(0, &tvb, 0, 2);
-            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_PT_LINES;
+            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD | BGFX_STATE_PT_LINES;
             bgfx::setState(state);
-            if (bgfx::isValid(m_program)) {
-                bgfx::submit(mMainView, m_program);
-            } else {
-                bgfx::submit(mMainView, BGFX_INVALID_HANDLE);
-            }
+            bgfx::submit(mMainView, mBloomProgram);
         }
     }
 }
@@ -1041,6 +1076,9 @@ bool Window::IsKeyPressed(int key) {
         case KEY_UP:
             scancode = SDL_SCANCODE_UP;
             break;
+        case KEY_DOWN:
+            scancode = SDL_SCANCODE_DOWN;
+            break;
         case KEY_SPACE:
             scancode = SDL_SCANCODE_SPACE;
             break;
@@ -1093,6 +1131,9 @@ bool Window::IsKeyDown(int key) {
         case KEY_UP:
             scancode = SDL_SCANCODE_UP;
             break;
+        case KEY_DOWN:
+            scancode = SDL_SCANCODE_DOWN;
+            break;
         case KEY_SPACE:
             scancode = SDL_SCANCODE_SPACE;
             break;
@@ -1114,8 +1155,11 @@ bool Window::IsKeyDown(int key) {
 }
 
 bool Window::IsGamepadButtonPressed(int gamepad, int button) {
-    // For now, treat pressed and down the same way
-    return IsGamepadButtonDown(gamepad, button);
+    // Return true only if button is currently pressed but was not pressed last frame
+    if (button >= 0 && button < 32) {
+        return mGamepadButtonsCurrent[button] && !mGamepadButtonsPressed[button];
+    }
+    return false;
 }
 
 bool Window::IsGamepadButtonDown(int gamepad, int button) {
@@ -1144,6 +1188,18 @@ bool Window::IsGamepadButtonDown(int gamepad, int button) {
         case GAMEPAD_BUTTON_RIGHT_TRIGGER_1:
             sdlButton = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
             break;
+        case GAMEPAD_BUTTON_RIGHT_FACE_DOWN:  // X button on PS4/5
+            sdlButton = SDL_CONTROLLER_BUTTON_A;
+            break;
+        case GAMEPAD_BUTTON_RIGHT_FACE_LEFT:  // Square button on PS4/5
+            sdlButton = SDL_CONTROLLER_BUTTON_X;
+            break;
+        case GAMEPAD_BUTTON_RIGHT_FACE_RIGHT: // Circle button on PS4/5
+            sdlButton = SDL_CONTROLLER_BUTTON_B;
+            break;
+        case GAMEPAD_BUTTON_RIGHT_FACE_UP:    // Triangle button on PS4/5
+            sdlButton = SDL_CONTROLLER_BUTTON_Y;
+            break;
         default:
             return false;
     }
@@ -1163,6 +1219,9 @@ float Window::GetGamepadAxisMovement(int gamepad, int axis) {
     switch (axis) {
         case GAMEPAD_AXIS_LEFT_X:
             sdlAxis = SDL_CONTROLLER_AXIS_LEFTX;
+            break;
+        case GAMEPAD_AXIS_RIGHT_Y:
+            sdlAxis = SDL_CONTROLLER_AXIS_RIGHTY;
             break;
         default:
             return 0.0f;

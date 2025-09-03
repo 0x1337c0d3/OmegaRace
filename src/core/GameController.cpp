@@ -26,6 +26,10 @@ GameController::GameController() {
     pStatus = std::make_unique<StatusDisplay>();
     std::cout << "StatusDisplay created successfully" << std::endl;
 
+    std::cout << "Creating PauseMenu..." << std::endl;
+    pPauseMenu = std::make_unique<PauseMenu>();
+    std::cout << "PauseMenu created successfully" << std::endl;
+
     m_Score = 0;
     m_PlayerShips = 4; // Start with 4 extra lives (5 total including current life)
     m_EndOfWave = false;
@@ -49,6 +53,14 @@ GameController::GameController() {
     m_WarpStartTime = 0.0f;
     m_IsFirstWave = true;
     m_WaitingForWarp = false;
+    
+    // Initialize pause system
+    m_IsPaused = false;
+    
+    // Initialize input state tracking
+    m_SpaceKeyWasPressed = false;
+    m_SKeyWasPressed = false;
+    m_CtrlKeyWasPressed = false;
 
     // Initialize UFO system
     m_UFO = new UFO();
@@ -83,6 +95,7 @@ void GameController::initialize() {
     pFollower = pTheEnemyController->getFollowPointer();
     pLeader = pTheEnemyController->getLeadPointer();
     pStatus->initialize();
+    pPauseMenu->initialize();
 
     AudioEngine::LoadBank("Master.bank", 0);
     AudioEngine::LoadBank("Master.strings.bank", 0);
@@ -101,6 +114,15 @@ void GameController::initialize() {
 
 void GameController::update(double Frame) {
     AudioEngine::Update();
+
+    // Handle pause input first (works even during other states)
+    handlePauseInput();
+
+    // Don't update gameplay if paused
+    if (m_IsPaused) {
+        pPauseMenu->update();
+        return;
+    }
 
     // Only update gameplay entities if not during warp transition
     if (!m_WarpActive) {
@@ -237,6 +259,15 @@ void GameController::draw() {
             m_WarpActive = false; // Effect finished
         }
     }
+    
+    // Draw pause menu last (on top of everything)
+    if (m_IsPaused) {
+        std::cout << "GameController::draw() - Game is paused, drawing pause menu" << std::endl;
+        pPauseMenu->draw();
+    } else {
+        // Uncomment this to see how often draw is called
+        // std::cout << "GameController::draw() - Game is not paused" << std::endl;
+    }
 }
 
 void GameController::newGame() {
@@ -274,15 +305,23 @@ void GameController::newGame() {
 }
 
 void GameController::handleInput() {
+    // Don't process game input if paused (except pause toggle which is handled in update)
+    if (m_IsPaused) {
+        return;
+    }
+    
     // Combined keyboard and controller input handling
     // Start with keyboard states
     bool turnLeft = false;
     bool turnRight = false;
     bool thrust = false;
 
-    // New game controls work even during warp transition
+    // New game controls - only when not in active gameplay
     if (Window::IsKeyPressed(KEY_N)) {
-        newGame();
+        // Only allow new game when player is not active (game over, menu screens)
+        if (!pThePlayer->getActive()) {
+            newGame();
+        }
     }
 
     // Block player movement and firing during warp transition
@@ -310,10 +349,22 @@ void GameController::handleInput() {
         thrust = true;
     }
 
-    // Fire (S key, Space, or Left Ctrl) - use IsKeyPressed for single shot
-    if (Window::IsKeyPressed(KEY_S) || Window::IsKeyPressed(KEY_SPACE) || Window::IsKeyPressed(KEY_LEFT_CONTROL)) {
+    // Fire (S key, Space, or Left Ctrl) - use proper single shot detection
+    bool spacePressed = Window::IsKeyDown(KEY_SPACE);
+    bool sPressed = Window::IsKeyDown(KEY_S);
+    bool ctrlPressed = Window::IsKeyDown(KEY_LEFT_CONTROL);
+    
+    // Fire on key press (transition from not pressed to pressed)
+    if ((spacePressed && !m_SpaceKeyWasPressed) ||
+        (sPressed && !m_SKeyWasPressed) ||
+        (ctrlPressed && !m_CtrlKeyWasPressed)) {
         pThePlayer->fireButtonPressed();
     }
+    
+    // Update previous key states
+    m_SpaceKeyWasPressed = spacePressed;
+    m_SKeyWasPressed = sPressed;
+    m_CtrlKeyWasPressed = ctrlPressed;
 
     // === CONTROLLER INPUT (ADDITIVE) ===
     // PS4 Controller input handling with enhanced support
@@ -321,14 +372,12 @@ void GameController::handleInput() {
         int gamepadId = Window::mControllerIndex;
 
         // === GAME CONTROLS (work during warp) ===
-        // Start button (Options) for new game
+        // Options button for new game - only when player is not active (game over, menu screens)
         if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) { // Options/Start
-            newGame();
-        }
-
-        // Share button for pause (alternative)
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) { // Share/Select
-            // Could add pause functionality here if needed
+            if (!pThePlayer->getActive()) {
+                // Only when not in active gameplay - start new game
+                newGame();
+            }
         }
 
         // === TURNING CONTROLS ===
@@ -1175,4 +1224,132 @@ void GameController::resetAllEntityStates() {
     pTheBorders->resetGridBackground();
 }
 
-} // namespace omegarace
+void GameController::handlePauseInput() {
+    // P key toggles pause - handle this separately from menu navigation
+    if (Window::IsKeyPressed(KEY_P)) {
+        std::cout << "P key detected! Calling togglePause()..." << std::endl;
+        togglePause();
+        return; // Exit early to prevent processing menu inputs on the same frame
+    }
+    
+    // Handle controller pause input (works in all game states)
+    if (Window::mControllerIndex >= 0) {
+        int gamepadId = Window::mControllerIndex;
+        
+        // Options button for pause during gameplay
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) { // Options/Start
+            if (pThePlayer->getActive() && m_State == -1) {
+                // During active gameplay - pause the game
+                std::cout << "Options button detected! Calling togglePause()..." << std::endl;
+                togglePause();
+                return;
+            }
+        }
+
+        // Share button for pause during active gameplay (alternative)
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) { // Share/Select
+            // Only trigger pause during active gameplay
+            if (pThePlayer->getActive() && m_State == -1) {
+                std::cout << "Share button detected! Calling togglePause()..." << std::endl;
+                togglePause();
+                return;
+            }
+        }
+    }
+    
+    // Only handle menu navigation if we're actually paused and menu is visible
+    if (!m_IsPaused || !pPauseMenu->isVisible()) {
+        return;
+    }
+    
+    // Handle pause menu navigation only when paused
+    // Up/Down arrow keys or W/S for menu navigation
+    if (Window::IsKeyPressed(KEY_UP) || Window::IsKeyPressed(KEY_W)) {
+        pPauseMenu->handleUp();
+    }
+    
+    if (Window::IsKeyPressed(KEY_DOWN) || Window::IsKeyPressed(KEY_S)) {
+        pPauseMenu->handleDown();
+    }
+    
+    // Space, or Fire key to select menu option
+    if (Window::IsKeyPressed(KEY_SPACE) || Window::IsKeyPressed(KEY_LEFT_CONTROL)) {
+        PauseMenu::MENU_OPTION selectedOption = pPauseMenu->getSelectedOption();
+        
+        // Handle the selected option
+        if (selectedOption == PauseMenu::RESUME) {
+            // Resume the game directly with explicit state management
+            pPauseMenu->hide();
+            m_IsPaused = false;
+            // Explicitly ensure the menu is not visible
+            if (pPauseMenu->isVisible()) {
+                pPauseMenu->hide();
+            }
+        } else if (selectedOption == PauseMenu::QUIT) {
+            // End the game the same way as when player runs out of lives
+            pPauseMenu->hide();
+            pThePlayer->setActive(false);
+            pStatus->setState(StatusDisplay::APP_GAMEOVER);
+            m_State = 1;
+            m_IsPaused = false; // Unpause to allow game over state to display
+        }
+    }
+    
+    // Handle controller input for pause menu
+    if (Window::mControllerIndex >= 0) {
+        int gamepadId = Window::mControllerIndex;
+        
+        // D-pad up or left stick up
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_UP)) {
+            pPauseMenu->handleUp();
+        }
+        
+        // D-pad down or left stick down
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_DOWN)) {
+            pPauseMenu->handleDown();
+        }
+        
+        // Face buttons (X, A) for select
+        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_A) || 
+            Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_X)) {
+            PauseMenu::MENU_OPTION selectedOption = pPauseMenu->getSelectedOption();
+                
+                if (selectedOption == PauseMenu::RESUME) {
+                    // Resume the game directly with explicit state management
+                    pPauseMenu->hide();
+                    m_IsPaused = false;
+                    // Explicitly ensure the menu is not visible
+                    if (pPauseMenu->isVisible()) {
+                        pPauseMenu->hide();
+                    }
+                } else if (selectedOption == PauseMenu::QUIT) {
+                    // End the game the same way as when player runs out of lives
+                    pPauseMenu->hide();
+                    pThePlayer->setActive(false);
+                    pStatus->setState(StatusDisplay::APP_GAMEOVER);
+                    m_State = 1;
+                    m_IsPaused = false; // Unpause to allow game over state to display
+                }
+            }
+        }
+    }
+}
+
+void omegarace::GameController::togglePause() {
+    m_IsPaused = !m_IsPaused;
+    
+    std::cout << "togglePause called - m_IsPaused is now: " << (m_IsPaused ? "true" : "false") << std::endl;
+    
+    if (m_IsPaused) {
+        std::cout << "Showing pause menu..." << std::endl;
+        pPauseMenu->show();
+        std::cout << "Pause menu visibility: " << (pPauseMenu->isVisible() ? "visible" : "hidden") << std::endl;
+        // Audio pause not available in current AudioEngine implementation
+        // AudioEngine::PauseAll();
+    } else {
+        std::cout << "Hiding pause menu..." << std::endl;
+        pPauseMenu->hide();
+        // Audio resume not available in current AudioEngine implementation
+        // AudioEngine::ResumeAll();
+    }
+}

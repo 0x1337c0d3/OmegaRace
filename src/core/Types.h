@@ -57,6 +57,7 @@ enum KeyCode {
     KEY_LEFT = 1073741904,
     KEY_RIGHT = 1073741903,
     KEY_UP = 1073741906,
+    KEY_DOWN = 1073741905,
     KEY_SPACE = 32,
     KEY_LEFT_CONTROL = 1073742048,
     KEY_ESCAPE = 27,
@@ -69,11 +70,15 @@ enum GamepadButton {
     GAMEPAD_BUTTON_MIDDLE_RIGHT = 7,     // Start
     GAMEPAD_BUTTON_LEFT_FACE_LEFT = 13,  // D-pad Left
     GAMEPAD_BUTTON_LEFT_FACE_RIGHT = 14, // D-pad Right
+    GAMEPAD_BUTTON_DPAD_UP = 11,         // D-pad Up
+    GAMEPAD_BUTTON_DPAD_DOWN = 12,       // D-pad Down
     GAMEPAD_BUTTON_RIGHT_TRIGGER_1 = 9,  // R1/RB
     GAMEPAD_BUTTON_RIGHT_FACE_DOWN = 0,  // A/X button
     GAMEPAD_BUTTON_RIGHT_FACE_LEFT = 2,  // X/Square button
     GAMEPAD_BUTTON_RIGHT_FACE_RIGHT = 1, // B/Circle button
-    GAMEPAD_BUTTON_RIGHT_FACE_UP = 3     // Y/Triangle button
+    GAMEPAD_BUTTON_RIGHT_FACE_UP = 3,    // Y/Triangle button
+    GAMEPAD_BUTTON_A = 0,                // Alternative name for A/X button
+    GAMEPAD_BUTTON_X = 2                 // Alternative name for X/Square button
 };
 
 // Gamepad axis constants

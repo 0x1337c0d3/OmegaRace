@@ -106,7 +106,6 @@ void StatusDisplay::draw() {
             pNumber->processNumber(m_HighScore, m_HiScoreLocation, size);
             pLetter->processString(m_ScoreText[1], m_ScoreTextLocation, size);
             pNumber->processNumber(m_Score, m_ScoreLocation, size);
-
             drawShips();
             break;
     }

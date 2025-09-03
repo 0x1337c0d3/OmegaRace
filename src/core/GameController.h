@@ -3,6 +3,7 @@
 #include "AudioEngine.h"
 #include "Borders.h"
 #include "EnemyController.h"
+#include "PauseMenu.h"
 #include "Player.h"
 #include "Rock.h"
 #include "StatusDisplay.h"
@@ -73,6 +74,7 @@ class GameController : Common {
     std::unique_ptr<Borders> pTheBorders;
     std::unique_ptr<EnemyController> pTheEnemyController;
     std::unique_ptr<StatusDisplay> pStatus;
+    std::unique_ptr<PauseMenu> pPauseMenu;
 
     // Rock system
     std::vector<omegarace::Rock*> m_Rocks;
@@ -107,6 +109,16 @@ class GameController : Common {
     // Bonus life system
     int m_NextBonusLifeThreshold;
     void checkBonusLife(); // NEW: Check if player has earned a bonus life
+    
+    // Pause system
+    bool m_IsPaused;
+    void handlePauseInput();
+    void togglePause();
+    
+    // Input state tracking to prevent rapid fire
+    bool m_SpaceKeyWasPressed;
+    bool m_SKeyWasPressed;
+    bool m_CtrlKeyWasPressed;
 };
 
 } // namespace omegarace
