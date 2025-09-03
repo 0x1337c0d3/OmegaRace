@@ -19,6 +19,8 @@ class VapourTrail {
 
     // Customization options
     void setTrailColor(const Color& color);
+    Color getTrailColor() const { return m_TrailColor; }
+    void setTrailLength(int length);        // Dynamic trail length adjustment
     void setFadeRate(float fadeRate);       // How fast trail fades (default 0.015f)
     void setUpdateFrequency(int frequency); // How often to add points (default 2)
     void setMaxThickness(float thickness);  // Maximum trail thickness (default 2.0f)

@@ -347,7 +347,6 @@ Potential enhancements:
 - Additional enemy types and behaviors
 - Power-ups and weapon upgrades
 - Multiple arena layouts
-- High score persistence
 - Online leaderboards
 - Additional visual effects
 
@@ -356,13 +355,9 @@ Potential enhancements:
 The following graphics improvements are planned for future development:
 
 ### Alpha Blending Issues
-- **Letters and Numbers** - Fix alpha blending artifacts where text elements interact with background grid
 - **Status Display** - Improve rendering order to prevent grid bleed-through on UI elements
-- **Text Clarity** - Ensure text remains crisp and readable over dynamic backgrounds
 
 ### Visual Effects Enhancements
-- **Vapour Trail** - Make player ship trail effect more smoky and particle-like
-- **Trail Rendering** - Improve trail opacity and particle distribution for better visual appeal
 - **Particle Density** - Adjust particle count and fade rates for more realistic smoke effect
 
 ### Ship Appearance

@@ -126,6 +126,10 @@ void StatusDisplay::setState(GAME_STATE s) {
     m_State = s;
 }
 
+StatusDisplay::GAME_STATE StatusDisplay::getState() const {
+    return m_State;
+}
+
 void StatusDisplay::newGame() {
     if (m_Score > m_HighScore) {
         m_HighScore = m_Score;

@@ -81,7 +81,6 @@ void PlayerExplosionLine::update(double frame) {
 
 void PlayerExplosionLine::draw() {
     if (m_ExplosionPhase < 1.0f) { // Only draw if still active
-        std::cout << "PlayerExplosionLine::draw() called - m_ExplosionPhase=" << m_ExplosionPhase << std::endl;
         // Calculate catastrophic explosion colors
         Color fragmentColor = calculateCatastrophicColor();
 
@@ -280,29 +279,42 @@ void PlayerExplosionLine::drawDebrisSparks(const Color& baseColor) {
     lineCenter.x = (newLine.start.x + newLine.end.x) / 2;
     lineCenter.y = (newLine.start.y + newLine.end.y) / 2;
 
-    // Create 2-4 debris sparks
+    // Create 2-4 debris sparks using the new particle shader
     int numSparks = Window::Random(2, 4);
 
     for (int i = 0; i < numSparks; i++) {
         // Random direction from fragment center
         float sparkAngle = Window::Random(0, 628) * 0.01f; // 0 to 2π
-        float sparkLength = Window::Random(3, 12) * (1.0f - m_ExplosionPhase * 0.6f);
+        float sparkDistance = Window::Random(8, 20) * (1.0f - m_ExplosionPhase * 0.6f);
 
-        Vector2i sparkEnd;
-        sparkEnd.x = lineCenter.x + (int)(cos(sparkAngle) * sparkLength);
-        sparkEnd.y = lineCenter.y + (int)(sin(sparkAngle) * sparkLength);
+        Vector2i sparkPosition;
+        sparkPosition.x = lineCenter.x + (int)(cos(sparkAngle) * sparkDistance);
+        sparkPosition.y = lineCenter.y + (int)(sin(sparkAngle) * sparkDistance);
 
-        Line sparkLine;
-        sparkLine.start = lineCenter;
-        sparkLine.end = sparkEnd;
-
+        // Enhanced particle effect for debris sparks
         Color sparkColor;
         sparkColor.red = 255;
         sparkColor.green = 180;
         sparkColor.blue = 50;
-        sparkColor.alpha = (int)(150 * (1.0f - m_ExplosionPhase));
+        sparkColor.alpha = (int)(200 * (1.0f - m_ExplosionPhase));
 
-        Window::DrawVolumetricLineWithBloom(&sparkLine, sparkColor, 0.8f, 0.6f);
+        float particleSize = 4.0f + (1.0f - m_ExplosionPhase) * 4.0f; // 4-8 pixels
+        float intensity = 1.2f * (1.0f - m_ExplosionPhase * 0.7f);
+        
+        Window::DrawParticleEffect(&sparkPosition, particleSize, intensity, sparkColor);
+        
+        // Keep some volumetric lines for variety
+        if (i % 2 == 0) {
+            Vector2i sparkEnd;
+            sparkEnd.x = lineCenter.x + (int)(cos(sparkAngle) * sparkDistance * 0.5f);
+            sparkEnd.y = lineCenter.y + (int)(sin(sparkAngle) * sparkDistance * 0.5f);
+
+            Line sparkLine;
+            sparkLine.start = lineCenter;
+            sparkLine.end = sparkEnd;
+
+            Window::DrawVolumetricLineWithBloom(&sparkLine, sparkColor, 0.8f, 0.6f);
+        }
     }
 }
 

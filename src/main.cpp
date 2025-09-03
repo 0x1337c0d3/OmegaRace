@@ -1,7 +1,7 @@
 #include "core/Game.h"
 #include <iostream>
 
-int main(int argc, const char* argv[]) {
+int main(int, const char**) {
     std::cout << "Starting OmegaRace..." << std::endl;
 
     std::unique_ptr<omegarace::Game> game = std::make_unique<omegarace::Game>();

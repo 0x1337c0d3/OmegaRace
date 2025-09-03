@@ -1,11 +1,13 @@
 #include "Window.h"
 #include "MetalLayerSetup.h"
+#include "../input/InputManager.h"
 #include <SDL2/SDL_syswm.h>
 #include <algorithm>
 #include <bgfx/bgfx.h>
 #include <bx/allocator.h>
 #include <bx/math.h>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <filesystem>
@@ -25,7 +27,6 @@ std::mt19937 m_Random;
 SDL_Window* Window::mWindow = nullptr;
 SDL_Renderer* Window::mRenderer = nullptr;
 Rectangle Window::mBox;
-int Window::mControllerIndex = -1;
 bool Window::mIsFullscreen = false;
 int Window::mWindowedWidth = 1024;
 int Window::mWindowedHeight = 768;
@@ -36,9 +37,23 @@ bgfx::ViewId Window::mMainView = 1;
 bgfx::ViewId Window::mBloomView = 2;
 bgfx::ProgramHandle Window::mBloomProgram = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle Window::mLineProgram = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle Window::mGridProgram = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle Window::mParticleProgram = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle Window::mShieldProgram = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle Window::mPostProcessProgram = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle Window::mVaporTrailProgram = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle Window::mWarpProgram = BGFX_INVALID_HANDLE;
+bgfx::ProgramHandle Window::mElectricBarrierProgram = BGFX_INVALID_HANDLE;
 bgfx::FrameBufferHandle Window::mBloomFrameBuffer = BGFX_INVALID_HANDLE;
 bgfx::TextureHandle Window::mBloomTexture = BGFX_INVALID_HANDLE;
 bgfx::UniformHandle Window::mBloomParams = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle Window::mGridParams = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle Window::mGridPlayerPos = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle Window::mParticleParams = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle Window::mShieldParams = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle Window::mVaporParams = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle Window::mWarpParams = BGFX_INVALID_HANDLE;
+bgfx::UniformHandle Window::mElectricParams = BGFX_INVALID_HANDLE;
 
 // Scaling for aspect ratio preservation
 float Window::mRenderScale = 1.0f;
@@ -50,9 +65,6 @@ double Window::mDeltaTime = 0.0;
 
 // Input state
 bool Window::mShouldClose = false;
-bool Window::mKeysPressed[512] = {false};
-bool Window::mGamepadButtonsPressed[32] = {false};
-bool Window::mGamepadButtonsCurrent[32] = {false};
 
 bool Window::mShouldQuit = false;
 
@@ -94,8 +106,8 @@ void Window::Init(int width, int height, std::string title) {
         std::cout << "SUCCESS: Custom line shaders loaded successfully!" << std::endl;
     }
 
-    // Set up controller
-    mControllerIndex = findController();
+    // Initialize InputManager
+    InputManager::Init();
 
     // Set up window box
     mBox.x = 0;
@@ -160,6 +172,12 @@ void Window::SetupRenderStates() {
     // This ensures no magenta/purple appears in letterboxed areas
     bgfx::setViewClear(mBackgroundView, BGFX_CLEAR_COLOR, 0x000000FF, 1.0f, 0);
     bgfx::setViewRect(mBackgroundView, 0, 0, uint16_t(mWindowedWidth), uint16_t(mWindowedHeight));
+    
+    // Set up orthographic projection for background view (for grid rendering)
+    float backgroundOrthoMatrix[16];
+    bx::mtxOrtho(backgroundOrthoMatrix, 0.0f, (float)GAME_WIDTH, (float)GAME_HEIGHT, 0.0f, -1.0f, 1.0f, 0.0f,
+                 bgfx::getCaps()->homogeneousDepth);
+    bgfx::setViewTransform(mBackgroundView, nullptr, backgroundOrthoMatrix);
 
     // Configure main view with black background like the original game
     // Use proper RGBA format for BGFX: 0xRRGGBBAA (black = 0x000000FF)
@@ -187,6 +205,15 @@ void Window::CreateBloomResources() {
     mBloomParams = bgfx::createUniform("u_bloomParams", bgfx::UniformType::Vec4);
     std::cout << "Created bloom uniform successfully" << std::endl;
 
+    // Create additional shader uniforms
+    mGridParams = bgfx::createUniform("u_gridParams", bgfx::UniformType::Vec4);
+    mGridPlayerPos = bgfx::createUniform("u_gridPlayerPos", bgfx::UniformType::Vec4);
+    mParticleParams = bgfx::createUniform("u_particleParams", bgfx::UniformType::Vec4);
+    mShieldParams = bgfx::createUniform("u_shieldParams", bgfx::UniformType::Vec4);
+    mVaporParams = bgfx::createUniform("u_vaporParams", bgfx::UniformType::Vec4);
+    mWarpParams = bgfx::createUniform("u_warpParams", bgfx::UniformType::Vec4);
+    mElectricParams = bgfx::createUniform("u_electricParams", bgfx::UniformType::Vec4);
+
     // Try to load volumetric line shader program for bloom effects
     mBloomProgram = loadProgram("vs_volumetric_line", "fs_volumetric_line");
     if (!bgfx::isValid(mBloomProgram)) {
@@ -199,9 +226,46 @@ void Window::CreateBloomResources() {
     } else {
         std::cout << "Successfully loaded volumetric line shaders with bloom support" << std::endl;
     }
+
+    // Load additional shader programs for enhanced effects
+    mGridProgram = loadProgram("vs_grid", "fs_grid");
+    if (bgfx::isValid(mGridProgram)) {
+        std::cout << "Successfully loaded grid shaders for neon background" << std::endl;
+    }
+
+    mParticleProgram = loadProgram("vs_particle", "fs_particle");
+    if (bgfx::isValid(mParticleProgram)) {
+        std::cout << "Successfully loaded particle shaders for enhanced explosions" << std::endl;
+    }
+
+    mShieldProgram = loadProgram("vs_shield", "fs_shield");
+    if (bgfx::isValid(mShieldProgram)) {
+        std::cout << "Successfully loaded shield shaders for glow effects" << std::endl;
+    }
+
+    mPostProcessProgram = loadProgram("vs_bloom", "fs_bloom");
+    if (bgfx::isValid(mPostProcessProgram)) {
+        std::cout << "Successfully loaded post-process bloom shaders" << std::endl;
+    }
+
+    mVaporTrailProgram = loadProgram("vs_vapor_trail", "fs_vapor_trail");
+    if (bgfx::isValid(mVaporTrailProgram)) {
+        std::cout << "Successfully loaded vapor trail shaders for smoky effects" << std::endl;
+    }
+
+    mWarpProgram = loadProgram("vs_warp", "fs_warp");
+    if (bgfx::isValid(mWarpProgram)) {
+        std::cout << "Successfully loaded warp shaders for fullscreen neon effects" << std::endl;
+    }
+
+    mElectricBarrierProgram = loadProgram("vs_electric_barrier", "fs_electric_barrier");
+    if (bgfx::isValid(mElectricBarrierProgram)) {
+        std::cout << "Successfully loaded electric barrier shaders for electric line effects" << std::endl;
+    }
 }
 
 void Window::Quit() {
+    InputManager::Shutdown();
     ShutdownBGFX();
 
     if (mWindow) {
@@ -223,6 +287,36 @@ void Window::ShutdownBGFX() {
         mLineProgram = BGFX_INVALID_HANDLE;
     }
 
+    if (bgfx::isValid(mGridProgram)) {
+        bgfx::destroy(mGridProgram);
+        mGridProgram = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mParticleProgram)) {
+        bgfx::destroy(mParticleProgram);
+        mParticleProgram = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mShieldProgram)) {
+        bgfx::destroy(mShieldProgram);
+        mShieldProgram = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mPostProcessProgram)) {
+        bgfx::destroy(mPostProcessProgram);
+        mPostProcessProgram = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mWarpProgram)) {
+        bgfx::destroy(mWarpProgram);
+        mWarpProgram = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mElectricBarrierProgram)) {
+        bgfx::destroy(mElectricBarrierProgram);
+        mElectricBarrierProgram = BGFX_INVALID_HANDLE;
+    }
+
     if (bgfx::isValid(mBloomFrameBuffer)) {
         bgfx::destroy(mBloomFrameBuffer);
         mBloomFrameBuffer = BGFX_INVALID_HANDLE;
@@ -236,6 +330,36 @@ void Window::ShutdownBGFX() {
     if (bgfx::isValid(mBloomParams)) {
         bgfx::destroy(mBloomParams);
         mBloomParams = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mGridParams)) {
+        bgfx::destroy(mGridParams);
+        mGridParams = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mGridPlayerPos)) {
+        bgfx::destroy(mGridPlayerPos);
+        mGridPlayerPos = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mParticleParams)) {
+        bgfx::destroy(mParticleParams);
+        mParticleParams = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mShieldParams)) {
+        bgfx::destroy(mShieldParams);
+        mShieldParams = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mWarpParams)) {
+        bgfx::destroy(mWarpParams);
+        mWarpParams = BGFX_INVALID_HANDLE;
+    }
+
+    if (bgfx::isValid(mElectricParams)) {
+        bgfx::destroy(mElectricParams);
+        mElectricParams = BGFX_INVALID_HANDLE;
     }
 
     bgfx::shutdown();
@@ -332,18 +456,6 @@ void Window::BeginFrame() {
     mDeltaTime = duration.count() / 1000000.0; // Convert to seconds
     mLastFrameTime = currentTime;
 
-    // Store previous keyboard state for key press detection
-    static std::vector<Uint8> previousKeyState;
-    const Uint8* currentKeyState = SDL_GetKeyboardState(NULL);
-    static int numKeys = 0;
-    if (numKeys == 0) {
-        SDL_GetKeyboardState(&numKeys);
-        previousKeyState.resize(numKeys);
-    }
-
-    // Copy current state to previous for next frame
-    std::copy(currentKeyState, currentKeyState + numKeys, previousKeyState.begin());
-
     // Handle window events
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -359,13 +471,10 @@ void Window::BeginFrame() {
                 mBox.width = (float)newWidth;
                 mBox.height = (float)newHeight;
             }
-        } else if (event.type == SDL_KEYDOWN) {
-            // Store key press events for IsKeyPressed detection
-            SDL_Scancode scancode = event.key.keysym.scancode;
-            if (scancode < 512) { // SDL_NUM_SCANCODES
-                mKeysPressed[scancode] = true;
-            }
         }
+        
+        // Pass event to InputManager for processing
+        InputManager::ProcessEvent(event);
     }
 
     // Calculate uniform scale to preserve aspect ratio
@@ -391,45 +500,14 @@ void Window::BeginFrame() {
 }
 
 void Window::EndFrame() {
-    // Submit background view to clear full screen (fixes magenta background in fullscreen)
-    bgfx::touch(mBackgroundView);
+    // Background view now has content (grid), so don't touch/clear it
+    // The grid shader handles the background clearing and drawing
     
     // For multi-threaded mode, just call frame() - BGFX handles threading
     bgfx::frame();
 
-    // Clear key pressed state for next frame
-    std::fill(std::begin(mKeysPressed), std::end(mKeysPressed), false);
-    
-    // Update gamepad button states for next frame
-    // Copy current state to previous state
-    std::copy(std::begin(mGamepadButtonsCurrent), std::end(mGamepadButtonsCurrent), 
-              std::begin(mGamepadButtonsPressed));
-    
-    // Update current state with actual controller state
-    if (mControllerIndex >= 0) {
-        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
-        if (controller) {
-            // Update all face button states
-            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_DOWN] = 
-                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A) != 0;
-            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_LEFT] = 
-                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X) != 0;
-            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_RIGHT] = 
-                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_B) != 0;
-            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_UP] = 
-                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_Y) != 0;
-            mGamepadButtonsCurrent[GAMEPAD_BUTTON_MIDDLE_LEFT] = 
-                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK) != 0;
-            mGamepadButtonsCurrent[GAMEPAD_BUTTON_MIDDLE_RIGHT] = 
-                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START) != 0;
-            mGamepadButtonsCurrent[GAMEPAD_BUTTON_LEFT_FACE_LEFT] = 
-                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT) != 0;
-            mGamepadButtonsCurrent[GAMEPAD_BUTTON_LEFT_FACE_RIGHT] = 
-                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) != 0;
-            mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_TRIGGER_1] = 
-                SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) != 0;
-        }
-    }
+    // Update InputManager for next frame
+    InputManager::Update();
 }
 
 bool Window::ShouldClose() {
@@ -498,8 +576,7 @@ void Window::DrawLine(Line* LineLocation, const Color& LineColor) {
 }
 
 void Window::DrawVolumetricLine(Line* LineLocation, const Color& LineColor, float thickness) {
-    // DrawVolumetricLineWithBloom(LineLocation, LineColor, thickness, 0.5f);
-    DrawLine(LineLocation, LineColor);
+    DrawVolumetricLineWithBloom(LineLocation, LineColor, thickness, 0.5f);
 }
 
 void Window::DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineColor, float thickness,
@@ -662,19 +739,6 @@ void Window::DrawPoint(Vector2i* Location, const Color& PointColor) {
 void Window::DrawRect(const Rectangle* RectangleLocation, const Color& RectangleColor) {
     if (!RectangleLocation)
         return;
-    // {
-    //     // Draw rectangle outline using DrawLine for each edge
-    //     Line top    = {{(int)RectangleLocation->x, (int)RectangleLocation->y}, {(int)(RectangleLocation->x + RectangleLocation->width), (int)RectangleLocation->y}};
-    //     Line right  = {{(int)(RectangleLocation->x + RectangleLocation->width), (int)RectangleLocation->y}, {(int)(RectangleLocation->x + RectangleLocation->width), (int)(RectangleLocation->y + RectangleLocation->height)}};
-    //     Line bottom = {{(int)(RectangleLocation->x + RectangleLocation->width), (int)(RectangleLocation->y + RectangleLocation->height)}, {(int)RectangleLocation->x, (int)(RectangleLocation->y + RectangleLocation->height)}};
-    //     Line left   = {{(int)RectangleLocation->x, (int)(RectangleLocation->y + RectangleLocation->height)}, {(int)RectangleLocation->x, (int)RectangleLocation->y}};
-
-    //     DrawLine(&top, RectangleColor);
-    //     DrawLine(&right, RectangleColor);
-    //     DrawLine(&bottom, RectangleColor);
-    //     DrawLine(&left, RectangleColor);
-    // return;
-    // }
 
     // Rectangle corners
     float left = RectangleLocation->x;
@@ -763,6 +827,227 @@ int Window::Random(int Min, int Max) {
     return roll(m_Random);
 }
 
+// Enhanced shader-based effects for Geometry Wars style neon aesthetics
+void Window::DrawNeonGrid(float gridSize, float lineWidth, float glowIntensity, const Color& gridColor, Vector2f* playerPos) {
+    if (!bgfx::isValid(mGridProgram)) {
+        return; // Fallback if shaders not available
+    }
+    
+    // Create fullscreen quad for grid rendering
+    struct GridVertex {
+        float x, y;
+        float r, g, b, a;
+        float u, v;
+    };
+    
+    float r = gridColor.red / 255.0f;
+    float g = gridColor.green / 255.0f;
+    float b = gridColor.blue / 255.0f;
+    float a = gridColor.alpha / 255.0f;
+    
+    // Use a quad that covers the logical game area (GAME_WIDTH x GAME_HEIGHT)
+    GridVertex vertices[4] = {
+        {0.0f, 0.0f, r, g, b, a, 0.0f, 0.0f},                         // Top-left
+        {GAME_WIDTH, 0.0f, r, g, b, a, 1.0f, 0.0f},                   // Top-right
+        {GAME_WIDTH, GAME_HEIGHT, r, g, b, a, 1.0f, 1.0f},            // Bottom-right
+        {0.0f, GAME_HEIGHT, r, g, b, a, 0.0f, 1.0f}                   // Bottom-left
+    };
+    
+    uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
+    
+    // Create vertex layout for grid rendering
+    static bgfx::VertexLayout gridLayout;
+    static bool gridLayoutInitialized = false;
+    if (!gridLayoutInitialized) {
+        gridLayout.begin()
+            .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+            .end();
+        gridLayoutInitialized = true;
+    }
+    
+    // Set grid parameters
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float>(currentTime - startTime).count();
+    
+    float gridParams[4] = {gridSize, lineWidth, glowIntensity, time};
+    if (bgfx::isValid(mGridParams)) {
+        bgfx::setUniform(mGridParams, gridParams);
+    }
+    
+    // Set player position for grid distortion effect
+    float playerParams[4] = {0.0f, 0.0f, 0.0f, 0.0f}; // Default to no distortion
+    if (playerPos != nullptr) {
+        playerParams[0] = playerPos->x / (float)GAME_WIDTH;  // Normalize to 0-1
+        playerParams[1] = playerPos->y / (float)GAME_HEIGHT; // Normalize to 0-1
+        playerParams[2] = 100.0f; // Distortion radius
+        playerParams[3] = 0.3f;   // Distortion strength
+    }
+    if (bgfx::isValid(mGridPlayerPos)) {
+        bgfx::setUniform(mGridPlayerPos, playerParams);
+    }
+    
+    // Submit grid rendering
+    bgfx::TransientVertexBuffer tvb;
+    bgfx::TransientIndexBuffer tib;
+    
+    if (bgfx::allocTransientBuffers(&tvb, gridLayout, 4, &tib, 6)) {
+        memcpy(tvb.data, vertices, sizeof(vertices));
+        memcpy(tib.data, indices, sizeof(indices));
+        
+        bgfx::setVertexBuffer(0, &tvb);
+        bgfx::setIndexBuffer(&tib);
+        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA);
+        bgfx::submit(mMainView, mGridProgram);
+    }
+}
+
+void Window::ResetGridDistortion() {
+    // Reset grid distortion by setting distortion strength to 0
+    float playerParams[4] = {0.0f, 0.0f, 0.0f, 0.0f}; // No distortion
+    if (bgfx::isValid(mGridPlayerPos)) {
+        bgfx::setUniform(mGridPlayerPos, playerParams);
+    }
+}
+
+void Window::DrawParticleEffect(Vector2i* position, float size, float intensity, const Color& particleColor) {
+    if (!bgfx::isValid(mParticleProgram)) {
+        return; // Fallback if shaders not available
+    }
+    
+    // Create particle quad
+    float halfSize = size * 0.5f;
+    
+    struct ParticleVertex {
+        float x, y;
+        float r, g, b, a;
+        float u, v;
+    };
+    
+    float r = particleColor.red / 255.0f;
+    float g = particleColor.green / 255.0f;
+    float b = particleColor.blue / 255.0f;
+    float a = particleColor.alpha / 255.0f;
+    
+    ParticleVertex vertices[4] = {
+        {position->x - halfSize, position->y - halfSize, r, g, b, a, 0.0f, 0.0f}, // Top-left
+        {position->x + halfSize, position->y - halfSize, r, g, b, a, 1.0f, 0.0f}, // Top-right
+        {position->x + halfSize, position->y + halfSize, r, g, b, a, 1.0f, 1.0f}, // Bottom-right
+        {position->x - halfSize, position->y + halfSize, r, g, b, a, 0.0f, 1.0f}  // Bottom-left
+    };
+    
+    uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
+    
+    // Create vertex layout for particles
+    static bgfx::VertexLayout particleLayout;
+    static bool particleLayoutInitialized = false;
+    if (!particleLayoutInitialized) {
+        particleLayout.begin()
+            .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+            .end();
+        particleLayoutInitialized = true;
+    }
+    
+    // Set particle parameters
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float>(currentTime - startTime).count();
+    
+    float particleParams[4] = {intensity, 1.0f, time, size}; // fadeType=1.0 for electric spark effect
+    bgfx::setUniform(mParticleParams, particleParams);
+    
+    // Submit particle rendering
+    bgfx::TransientVertexBuffer tvb;
+    bgfx::TransientIndexBuffer tib;
+    
+    if (bgfx::allocTransientBuffers(&tvb, particleLayout, 4, &tib, 6)) {
+        memcpy(tvb.data, vertices, sizeof(vertices));
+        memcpy(tib.data, indices, sizeof(indices));
+        
+        bgfx::setVertexBuffer(0, &tvb);
+        bgfx::setIndexBuffer(&tib);
+        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD);
+        bgfx::submit(mMainView, mParticleProgram);
+    }
+}
+
+void Window::DrawShieldGlow(Vector2i* center, float radius, float energy, const Color& shieldColor) {
+    if (!bgfx::isValid(mShieldProgram)) {
+        return; // Fallback if shaders not available
+    }
+    
+    // Create shield quad
+    struct ShieldVertex {
+        float x, y;
+        float r, g, b, a;
+        float u, v;
+    };
+    
+    float r = shieldColor.red / 255.0f;
+    float g = shieldColor.green / 255.0f;
+    float b = shieldColor.blue / 255.0f;
+    float a = shieldColor.alpha / 255.0f;
+    
+    ShieldVertex vertices[4] = {
+        {center->x - radius, center->y - radius, r, g, b, a, 0.0f, 0.0f}, // Top-left
+        {center->x + radius, center->y - radius, r, g, b, a, 1.0f, 0.0f}, // Top-right
+        {center->x + radius, center->y + radius, r, g, b, a, 1.0f, 1.0f}, // Bottom-right
+        {center->x - radius, center->y + radius, r, g, b, a, 0.0f, 1.0f}  // Bottom-left
+    };
+    
+    uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
+    
+    // Create vertex layout for shield
+    static bgfx::VertexLayout shieldLayout;
+    static bool shieldLayoutInitialized = false;
+    if (!shieldLayoutInitialized) {
+        shieldLayout.begin()
+            .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+            .end();
+        shieldLayoutInitialized = true;
+    }
+    
+    // Set shield parameters
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float>(currentTime - startTime).count();
+    
+    float shieldParams[4] = {energy, time, 1.0f, 0.02f}; // energy, time, distortion, thickness
+    bgfx::setUniform(mShieldParams, shieldParams);
+    
+    // Submit shield rendering
+    bgfx::TransientVertexBuffer tvb;
+    bgfx::TransientIndexBuffer tib;
+    
+    if (bgfx::allocTransientBuffers(&tvb, shieldLayout, 4, &tib, 6)) {
+        memcpy(tvb.data, vertices, sizeof(vertices));
+        memcpy(tib.data, indices, sizeof(indices));
+        
+        bgfx::setVertexBuffer(0, &tvb);
+        bgfx::setIndexBuffer(&tib);
+        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA);
+        bgfx::submit(mMainView, mShieldProgram);
+    }
+}
+
+void Window::ApplyPostProcessBloom(float threshold, float intensity, float radius) {
+    // Set bloom parameters for use in other shaders
+    float bloomParams[4] = {threshold, intensity, radius, 16.0f}; // 16 samples
+    if (bgfx::isValid(mBloomParams)) {
+        bgfx::setUniform(mBloomParams, bloomParams);
+    }
+    
+    // Note: Bloom effect is now applied during normal rendering in volumetric line shaders
+    // and other bright element shaders, rather than as a post-process step.
+    // This prevents the full-screen white overlay issue.
+}
+
 std::string Window::dataPath() {
 #ifdef __APPLE__
     // Get the path to the executable on macOS
@@ -779,126 +1064,7 @@ std::string Window::dataPath() {
     return "../Resources";
 }
 
-void Window::updateControllerDetection() {
-    // Check if current controller is still connected
-    if (mControllerIndex >= 0 && !SDL_GameControllerGetAttached(SDL_GameControllerFromInstanceID(mControllerIndex))) {
-        mControllerIndex = -1;
-    }
 
-    // Check for new controllers periodically
-    static auto lastCheck = std::chrono::high_resolution_clock::now();
-    auto now = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastCheck);
-
-    if (duration.count() > 500) { // Check every 500ms
-        lastCheck = now;
-        int newController = findController();
-        if (newController != -1 && newController != mControllerIndex) {
-            mControllerIndex = newController;
-        }
-    }
-}
-
-int Window::findController() {
-    // Look for connected game controllers
-    for (int i = 0; i < SDL_NumJoysticks(); i++) {
-        if (SDL_IsGameController(i)) {
-            SDL_GameController* controller = SDL_GameControllerOpen(i);
-            if (controller) {
-                const char* name = SDL_GameControllerName(controller);
-                if (name) {
-                    std::string nameStr = name;
-                    std::transform(nameStr.begin(), nameStr.end(), nameStr.begin(), ::tolower);
-
-                    // Check for PlayStation controller patterns
-                    if (nameStr.find("ps4") != std::string::npos || nameStr.find("dualshock") != std::string::npos ||
-                        nameStr.find("dualsense") != std::string::npos || nameStr.find("sony") != std::string::npos ||
-                        nameStr.find("wireless controller") != std::string::npos) {
-                        // Preferred controller found
-                        return i;
-                    }
-                }
-                // Keep first available controller as fallback
-                return i;
-            }
-        }
-    }
-    return -1;
-}
-
-// Controller input functions
-bool Window::IsControllerButtonPressed(int button) {
-    if (mControllerIndex >= 0) {
-        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
-        if (controller) {
-            return SDL_GameControllerGetButton(controller, (SDL_GameControllerButton)button);
-        }
-    }
-    return false;
-}
-
-bool Window::IsControllerButtonDown(int button) {
-    return IsControllerButtonPressed(button); // Same as pressed for SDL
-}
-
-Vector2f Window::GetControllerLeftStick() {
-    if (mControllerIndex >= 0) {
-        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
-        if (controller) {
-            float x = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX) / 32767.0f;
-            float y = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY) / 32767.0f;
-            return {x, y};
-        }
-    }
-    return {0.0f, 0.0f};
-}
-
-Vector2f Window::GetControllerRightStick() {
-    if (mControllerIndex >= 0) {
-        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
-        if (controller) {
-            float x = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_RIGHTX) / 32767.0f;
-            float y = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_RIGHTY) / 32767.0f;
-            return {x, y};
-        }
-    }
-    return {0.0f, 0.0f};
-}
-
-float Window::GetControllerLeftTrigger() {
-    if (mControllerIndex >= 0) {
-        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
-        if (controller) {
-            return SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT) / 32767.0f;
-        }
-    }
-    return 0.0f;
-}
-
-float Window::GetControllerRightTrigger() {
-    if (mControllerIndex >= 0) {
-        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
-        if (controller) {
-            return SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) / 32767.0f;
-        }
-    }
-    return 0.0f;
-}
-
-bool Window::IsControllerConnected() {
-    return mControllerIndex >= 0;
-}
-
-std::string Window::GetControllerName() {
-    if (mControllerIndex >= 0) {
-        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
-        if (controller) {
-            const char* name = SDL_GameControllerName(controller);
-            return name ? std::string(name) : "Unknown Controller";
-        }
-    }
-    return "No Controller";
-}
 
 void Window::BeginBloomMode() {
     // TODO: Implement BGFX bloom mode
@@ -909,7 +1075,71 @@ void Window::EndBloomMode() {
 }
 
 // Full screen warp effect for dramatic wave transitions
+// Enhanced full screen warp effect using a specialized shader for dramatic neon transitions
 void Window::DrawFullScreenWarp(float intensity, float time) {
+    // If we have the specialized warp shader, use it for a much better effect
+    if (bgfx::isValid(mWarpProgram)) {
+        // Create a fullscreen quad that covers the entire logical game area
+        struct WarpVertex {
+            float x, y;
+            float r, g, b, a;
+            float u, v; // Texture coordinates for shader effects
+        };
+        
+        // Fullscreen quad vertices covering logical game dimensions
+        WarpVertex vertices[4] = {
+            {0.0f, 0.0f, 1.0f, 1.0f, 1.0f, intensity, 0.0f, 0.0f},                         // Top-left
+            {GAME_WIDTH, 0.0f, 1.0f, 1.0f, 1.0f, intensity, 1.0f, 0.0f},                   // Top-right
+            {GAME_WIDTH, GAME_HEIGHT, 1.0f, 1.0f, 1.0f, intensity, 1.0f, 1.0f},            // Bottom-right
+            {0.0f, GAME_HEIGHT, 1.0f, 1.0f, 1.0f, intensity, 0.0f, 1.0f}                   // Bottom-left
+        };
+        
+        uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
+        
+        // Create vertex layout for warp shader
+        static bgfx::VertexLayout warpLayout;
+        static bool warpLayoutInitialized = false;
+        if (!warpLayoutInitialized) {
+            warpLayout.begin()
+                .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
+                .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+                .end();
+            warpLayoutInitialized = true;
+        }
+        
+        // Set warp shader parameters for advanced effects
+        float warpParams[4] = {
+            time,                           // x: Animation time for wave propagation
+            intensity * 2.0f,              // y: Effect intensity (boosted for visibility)
+            0.8f + 0.2f * sinf(time),      // z: Dynamic wave frequency 
+            5.0f + 2.0f * cosf(time * 0.7f) // w: Ring count (animated between 3-7 rings)
+        };
+        
+        if (bgfx::isValid(mWarpParams)) {
+            bgfx::setUniform(mWarpParams, warpParams);
+        }
+        
+        // Submit warp effect rendering with additive blending for neon glow
+        bgfx::TransientVertexBuffer tvb;
+        bgfx::TransientIndexBuffer tib;
+        
+        if (bgfx::allocTransientBuffers(&tvb, warpLayout, 4, &tib, 6)) {
+            memcpy(tvb.data, vertices, sizeof(vertices));
+            memcpy(tib.data, indices, sizeof(indices));
+            
+            bgfx::setVertexBuffer(0, &tvb);
+            bgfx::setIndexBuffer(&tib);
+            
+            // Use additive blending for bright neon effect
+            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD);
+            bgfx::submit(mMainView, mWarpProgram);
+        }
+        
+        return; // Exit early when using the enhanced shader
+    }
+    
+    // Fallback to original implementation if warp shader is not available
     // Draw concentric rings and radial lines from center
     const int numRings = 6;
     const int numRadials = 16;
@@ -918,7 +1148,6 @@ void Window::DrawFullScreenWarp(float intensity, float time) {
     float maxRadius = std::min(GAME_WIDTH, GAME_HEIGHT) * 0.5f * (0.7f + 0.3f * intensity);
     float ringAlpha = 0.5f * intensity;
     float radialAlpha = 0.3f * intensity;
-    // Unused variable removed: float baseHue = fmodf(time * 0.2f, 1.0f);
 
     // Draw rings
     for (int i = 1; i <= numRings; ++i) {
@@ -1044,191 +1273,184 @@ bool Window::IsFullscreen() {
     return mIsFullscreen;
 }
 
-// Input functions - Raylib-compatible API using SDL2
-bool Window::IsKeyPressed(int key) {
-    // Map our key constants to SDL scancodes
-    SDL_Scancode scancode;
-    switch (key) {
-        case KEY_A:
-            scancode = SDL_SCANCODE_A;
-            break;
-        case KEY_D:
-            scancode = SDL_SCANCODE_D;
-            break;
-        case KEY_W:
-            scancode = SDL_SCANCODE_W;
-            break;
-        case KEY_S:
-            scancode = SDL_SCANCODE_S;
-            break;
-        case KEY_N:
-            scancode = SDL_SCANCODE_N;
-            break;
-        case KEY_P:
-            scancode = SDL_SCANCODE_P;
-            break;
-        case KEY_LEFT:
-            scancode = SDL_SCANCODE_LEFT;
-            break;
-        case KEY_RIGHT:
-            scancode = SDL_SCANCODE_RIGHT;
-            break;
-        case KEY_UP:
-            scancode = SDL_SCANCODE_UP;
-            break;
-        case KEY_DOWN:
-            scancode = SDL_SCANCODE_DOWN;
-            break;
-        case KEY_SPACE:
-            scancode = SDL_SCANCODE_SPACE;
-            break;
-        case KEY_LEFT_CONTROL:
-            scancode = SDL_SCANCODE_LCTRL;
-            break;
-        case KEY_ESCAPE:
-            scancode = SDL_SCANCODE_ESCAPE;
-            break;
-        case KEY_F11:
-            scancode = SDL_SCANCODE_F11;
-            break;
-        default:
-            return false;
+
+
+void Window::DrawVaporTrailSegment(const Vector2f& start, const Vector2f& end, float width, 
+                                  float trailPosition, const Color& trailColor, float alpha) {
+    if (!bgfx::isValid(mVaporTrailProgram)) {
+        return; // Fallback if shader not available
     }
-
-    bool result = mKeysPressed[scancode];
-
-    return result;
+    
+    // Get current time for animation
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float>(currentTime - startTime).count();
+    
+    // Set vapor trail parameters for much better visibility
+    float vaporParams[4] = {
+        time,           // x: time for animation
+        0.1f,           // y: noise scale (increased from 0.01f)
+        0.8f,           // z: turbulence amount (increased from 0.3f)
+        0.8f            // w: fade factor (reduced from 1.2f for longer trails)
+    };
+    if (bgfx::isValid(mVaporParams)) {
+        bgfx::setUniform(mVaporParams, vaporParams);
+    }
+    
+    // Calculate direction and perpendicular vectors
+    Vector2f direction = {end.x - start.x, end.y - start.y};
+    float length = sqrt(direction.x * direction.x + direction.y * direction.y);
+    
+    if (length < 0.1f) return; // Skip very short segments
+    
+    // Normalize direction
+    direction.x /= length;
+    direction.y /= length;
+    
+    // Calculate perpendicular vector for width
+    Vector2f perpendicular = {-direction.y * (width * 0.5f), direction.x * (width * 0.5f)};
+    
+    // Create quad vertices for vapor trail segment
+    struct VaporTrailVertex {
+        float x, y;
+        float r, g, b, a;
+        float u, v; // u = position along trail, v = position across width
+    };
+    
+    float r = trailColor.red / 255.0f;
+    float g = trailColor.green / 255.0f;
+    float b = trailColor.blue / 255.0f;
+    float a_color = (trailColor.alpha / 255.0f) * alpha;
+    
+    // Create quad with proper texture coordinates for the shader
+    VaporTrailVertex vertices[4] = {
+        {start.x + perpendicular.x, start.y + perpendicular.y, r, g, b, a_color, trailPosition, 0.0f}, // Top-left
+        {start.x - perpendicular.x, start.y - perpendicular.y, r, g, b, a_color, trailPosition, 1.0f}, // Bottom-left
+        {end.x - perpendicular.x, end.y - perpendicular.y, r, g, b, a_color, trailPosition + 0.1f, 1.0f}, // Bottom-right
+        {end.x + perpendicular.x, end.y + perpendicular.y, r, g, b, a_color, trailPosition + 0.1f, 0.0f}  // Top-right
+    };
+    
+    uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
+    
+    // Create vertex layout for vapor trails
+    static bgfx::VertexLayout vaporLayout;
+    static bool layoutInitialized = false;
+    if (!layoutInitialized) {
+        vaporLayout.begin()
+            .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+            .end();
+        layoutInitialized = true;
+    }
+    
+    // Submit vapor trail segment
+    bgfx::TransientVertexBuffer tvb;
+    bgfx::TransientIndexBuffer tib;
+    
+    if (bgfx::allocTransientBuffers(&tvb, vaporLayout, 4, &tib, 6)) {
+        memcpy(tvb.data, vertices, sizeof(vertices));
+        memcpy(tib.data, indices, sizeof(indices));
+        
+        bgfx::setVertexBuffer(0, &tvb);
+        bgfx::setIndexBuffer(&tib);
+        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ALPHA);
+        bgfx::submit(mMainView, mVaporTrailProgram);
+    }
 }
 
-bool Window::IsKeyDown(int key) {
-    // Map our key constants to SDL scancodes
-    SDL_Scancode scancode;
-    switch (key) {
-        case KEY_A:
-            scancode = SDL_SCANCODE_A;
-            break;
-        case KEY_D:
-            scancode = SDL_SCANCODE_D;
-            break;
-        case KEY_W:
-            scancode = SDL_SCANCODE_W;
-            break;
-        case KEY_S:
-            scancode = SDL_SCANCODE_S;
-            break;
-        case KEY_N:
-            scancode = SDL_SCANCODE_N;
-            break;
-        case KEY_P:
-            scancode = SDL_SCANCODE_P;
-            break;
-        case KEY_LEFT:
-            scancode = SDL_SCANCODE_LEFT;
-            break;
-        case KEY_RIGHT:
-            scancode = SDL_SCANCODE_RIGHT;
-            break;
-        case KEY_UP:
-            scancode = SDL_SCANCODE_UP;
-            break;
-        case KEY_DOWN:
-            scancode = SDL_SCANCODE_DOWN;
-            break;
-        case KEY_SPACE:
-            scancode = SDL_SCANCODE_SPACE;
-            break;
-        case KEY_LEFT_CONTROL:
-            scancode = SDL_SCANCODE_LCTRL;
-            break;
-        case KEY_ESCAPE:
-            scancode = SDL_SCANCODE_ESCAPE;
-            break;
-        case KEY_F11:
-            scancode = SDL_SCANCODE_F11;
-            break;
-        default:
-            return false;
+void Window::DrawElectricBarrierLine(Line* LineLocation, const Color& LineColor, 
+                                    float pulseSpeed, float thickness, float fadeTime) {
+    if (!LineLocation || !bgfx::isValid(mElectricBarrierProgram))
+        return;
+
+    // Convert Color to normalized float values
+    float r = LineColor.red / 255.0f;
+    float g = LineColor.green / 255.0f;
+    float b = LineColor.blue / 255.0f;
+    float a = LineColor.alpha / 255.0f;
+
+    // Calculate line vector and perpendicular for thickness
+    float dx = (float)(LineLocation->end.x - LineLocation->start.x);
+    float dy = (float)(LineLocation->end.y - LineLocation->start.y);
+    float length = sqrtf(dx * dx + dy * dy);
+
+    if (length == 0.0f)
+        return; // Skip zero-length lines for electric barriers
+
+    // Normalize direction vector
+    float dirX = dx / length;
+    float dirY = dy / length;
+
+    // Calculate perpendicular vector for line thickness
+    float perpX = -dirY * thickness * 0.5f;
+    float perpY = dirX * thickness * 0.5f;
+
+    // Create electric barrier line vertices
+    struct ElectricBarrierVertex {
+        float x, y;
+        float r, g, b, a;
+        float u, v; // u: progress along line (0-1), v: perpendicular distance (-1 to 1)
+    };
+
+    ElectricBarrierVertex vertices[4] = {
+        // Bottom-left
+        {(float)LineLocation->start.x - perpX, (float)LineLocation->start.y - perpY, 
+         r, g, b, a, 0.0f, -1.0f},
+        // Bottom-right  
+        {(float)LineLocation->end.x - perpX, (float)LineLocation->end.y - perpY,
+         r, g, b, a, 1.0f, -1.0f},
+        // Top-right
+        {(float)LineLocation->end.x + perpX, (float)LineLocation->end.y + perpY,
+         r, g, b, a, 1.0f, 1.0f},
+        // Top-left
+        {(float)LineLocation->start.x + perpX, (float)LineLocation->start.y + perpY,
+         r, g, b, a, 0.0f, 1.0f}
+    };
+
+    uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
+
+    // Create vertex layout for electric barrier shader (same as basic line)
+    bgfx::VertexLayout electricLayout;
+    electricLayout.begin()
+        .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
+        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
+        .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+        .end();
+
+    // Allocate transient buffers
+    bgfx::TransientVertexBuffer tvb;
+    bgfx::TransientIndexBuffer tib;
+
+    if (bgfx::allocTransientBuffers(&tvb, electricLayout, 4, &tib, 6)) {
+        
+        // Copy vertex data
+        memcpy(tvb.data, vertices, sizeof(vertices));
+        memcpy(tib.data, indices, sizeof(indices));
+
+        // Set buffers
+        bgfx::setVertexBuffer(0, &tvb);
+        bgfx::setIndexBuffer(&tib);
+
+        // Calculate time for animation (same pattern as other shaders)
+        static auto startTime = std::chrono::high_resolution_clock::now();
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float>(currentTime - startTime).count();
+
+        // Set electric barrier parameters
+        float electricParams[4] = {
+            time,       // x: current time for animation
+            pulseSpeed, // y: pulse speed (default 15.0)
+            thickness,  // z: line thickness
+            fadeTime    // w: fade time remaining
+        };
+        bgfx::setUniform(mElectricParams, electricParams);
+
+        // Set render state with additive blending for electric glow
+        uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD;
+        bgfx::setState(state);
+        bgfx::submit(mMainView, mElectricBarrierProgram);
     }
-
-    const Uint8* keyState = SDL_GetKeyboardState(NULL);
-    return keyState[scancode];
-}
-
-bool Window::IsGamepadButtonPressed(int gamepad, int button) {
-    // Return true only if button is currently pressed but was not pressed last frame
-    if (button >= 0 && button < 32) {
-        return mGamepadButtonsCurrent[button] && !mGamepadButtonsPressed[button];
-    }
-    return false;
-}
-
-bool Window::IsGamepadButtonDown(int gamepad, int button) {
-    if (mControllerIndex < 0)
-        return false;
-
-    SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
-    if (!controller)
-        return false;
-
-    // Map our button constants to SDL2 constants
-    SDL_GameControllerButton sdlButton;
-    switch (button) {
-        case GAMEPAD_BUTTON_MIDDLE_LEFT:
-            sdlButton = SDL_CONTROLLER_BUTTON_BACK;
-            break;
-        case GAMEPAD_BUTTON_MIDDLE_RIGHT:
-            sdlButton = SDL_CONTROLLER_BUTTON_START;
-            break;
-        case GAMEPAD_BUTTON_LEFT_FACE_LEFT:
-            sdlButton = SDL_CONTROLLER_BUTTON_DPAD_LEFT;
-            break;
-        case GAMEPAD_BUTTON_LEFT_FACE_RIGHT:
-            sdlButton = SDL_CONTROLLER_BUTTON_DPAD_RIGHT;
-            break;
-        case GAMEPAD_BUTTON_RIGHT_TRIGGER_1:
-            sdlButton = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
-            break;
-        case GAMEPAD_BUTTON_RIGHT_FACE_DOWN:  // X button on PS4/5
-            sdlButton = SDL_CONTROLLER_BUTTON_A;
-            break;
-        case GAMEPAD_BUTTON_RIGHT_FACE_LEFT:  // Square button on PS4/5
-            sdlButton = SDL_CONTROLLER_BUTTON_X;
-            break;
-        case GAMEPAD_BUTTON_RIGHT_FACE_RIGHT: // Circle button on PS4/5
-            sdlButton = SDL_CONTROLLER_BUTTON_B;
-            break;
-        case GAMEPAD_BUTTON_RIGHT_FACE_UP:    // Triangle button on PS4/5
-            sdlButton = SDL_CONTROLLER_BUTTON_Y;
-            break;
-        default:
-            return false;
-    }
-
-    return SDL_GameControllerGetButton(controller, sdlButton) != 0;
-}
-
-float Window::GetGamepadAxisMovement(int gamepad, int axis) {
-    if (mControllerIndex < 0)
-        return 0.0f;
-
-    SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
-    if (!controller)
-        return 0.0f;
-
-    SDL_GameControllerAxis sdlAxis;
-    switch (axis) {
-        case GAMEPAD_AXIS_LEFT_X:
-            sdlAxis = SDL_CONTROLLER_AXIS_LEFTX;
-            break;
-        case GAMEPAD_AXIS_RIGHT_Y:
-            sdlAxis = SDL_CONTROLLER_AXIS_RIGHTY;
-            break;
-        default:
-            return 0.0f;
-    }
-
-    Sint16 value = SDL_GameControllerGetAxis(controller, sdlAxis);
-    return value / 32767.0f; // Normalize to -1.0 to 1.0
 }
 
 } // namespace omegarace

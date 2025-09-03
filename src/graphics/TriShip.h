@@ -16,7 +16,7 @@ class TriShip {
     TriShip();
     ~TriShip();
 
-    void update(const Vector2f& location, float scale);
+    void update(const Vector2f& location, float scale, const Vector2f& velocity = Vector2f(0.0f, 0.0f));
     void draw();
     void setThreatLevel(float level); // 0.0 to 1.0 - affects menacing appearance
     void setAggressiveMode(bool aggressive);

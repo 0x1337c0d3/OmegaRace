@@ -46,16 +46,29 @@ class Window {
     static void DrawVolumetricLine(Line* LineLocation, const Color& LineColor, float thickness = 3.0f);
     static void DrawVolumetricLineWithBloom(Line* LineLocation, const Color& LineColor, float thickness = 3.0f,
                                             float bloomIntensity = 0.5f);
+    
+    // Electric barrier shader-based line drawing
+    static void DrawElectricBarrierLine(Line* LineLocation, const Color& LineColor, 
+                                       float pulseSpeed = 15.0f, float thickness = 3.0f, float fadeTime = 0.5f);
+
+    // Enhanced shader-based effects for Geometry Wars style
+    static void DrawNeonGrid(float gridSize = 32.0f, float lineWidth = 0.02f, float glowIntensity = 1.0f, 
+                            const Color& gridColor = {0, 100, 255, 80}, Vector2f* playerPos = nullptr);
+    static void ResetGridDistortion(); // Reset grid distortion when player is inactive
+    static void DrawParticleEffect(Vector2i* position, float size = 8.0f, float intensity = 1.0f, 
+                                  const Color& particleColor = {255, 255, 255, 255});
+    
+    // Smoky vapor trail rendering with advanced shader effects
+    static void DrawVaporTrailSegment(const Vector2f& start, const Vector2f& end, float width, 
+                                     float trailPosition, const Color& trailColor, float alpha = 1.0f);
+    static void DrawShieldGlow(Vector2i* center, float radius = 50.0f, float energy = 1.0f, 
+                               const Color& shieldColor = {100, 200, 255, 180});
+    static void ApplyPostProcessBloom(float threshold = 0.5f, float intensity = 1.5f, float radius = 0.01f);
 
     static Vector2i GetWindowSize();
     static int Random(int Min, int Max);
 
     static std::string dataPath();
-
-    // Controller support
-    static int findController();
-    static void updateControllerDetection();
-    static int mControllerIndex;
 
     // Window management
     static bool ShouldClose();
@@ -64,16 +77,6 @@ class Window {
     // Shader support for advanced effects (placeholder)
     static void BeginBloomMode();
     static void EndBloomMode();
-
-    // Controller input
-    static bool IsControllerButtonPressed(int button);
-    static bool IsControllerButtonDown(int button);
-    static Vector2f GetControllerLeftStick();
-    static Vector2f GetControllerRightStick();
-    static float GetControllerLeftTrigger();
-    static float GetControllerRightTrigger();
-    static bool IsControllerConnected();
-    static std::string GetControllerName();
 
     // Full screen warp effect for wave transitions (placeholder)
     static void DrawFullScreenWarp(float intensity = 1.0f, float time = 0.0f);
@@ -84,13 +87,6 @@ class Window {
     static bool CheckForFullscreenToggle();
     static void ToggleFullscreen();
     static bool IsFullscreen();
-
-    // Input functions - Raylib-compatible API using SDL2
-    static bool IsKeyPressed(int key);
-    static bool IsKeyDown(int key);
-    static bool IsGamepadButtonPressed(int gamepad, int button);
-    static bool IsGamepadButtonDown(int gamepad, int button);
-    static float GetGamepadAxisMovement(int gamepad, int axis);
 
   private:
     // SDL2 state
@@ -107,9 +103,23 @@ class Window {
     static bgfx::ViewId mBloomView;
     static bgfx::ProgramHandle mBloomProgram;
     static bgfx::ProgramHandle mLineProgram;
+    static bgfx::ProgramHandle mGridProgram;
+    static bgfx::ProgramHandle mParticleProgram;
+    static bgfx::ProgramHandle mShieldProgram;
+    static bgfx::ProgramHandle mPostProcessProgram;
+    static bgfx::ProgramHandle mVaporTrailProgram;
+    static bgfx::ProgramHandle mWarpProgram;
+    static bgfx::ProgramHandle mElectricBarrierProgram;
     static bgfx::FrameBufferHandle mBloomFrameBuffer;
     static bgfx::TextureHandle mBloomTexture;
     static bgfx::UniformHandle mBloomParams;
+    static bgfx::UniformHandle mGridParams;
+    static bgfx::UniformHandle mGridPlayerPos; // NEW: For grid distortion around player
+    static bgfx::UniformHandle mParticleParams;
+    static bgfx::UniformHandle mShieldParams;
+    static bgfx::UniformHandle mVaporParams;
+    static bgfx::UniformHandle mWarpParams;
+    static bgfx::UniformHandle mElectricParams;
 
     // Scaling for aspect ratio preservation
     static float mRenderScale;
@@ -123,9 +133,6 @@ class Window {
 
     // Input state
     static bool mShouldClose;
-    static bool mKeysPressed[512]; // SDL_NUM_SCANCODES is typically 512
-    static bool mGamepadButtonsPressed[32]; // Track previous frame gamepad button states
-    static bool mGamepadButtonsCurrent[32]; // Track current frame gamepad button states
 
     static bool mShouldQuit;
 

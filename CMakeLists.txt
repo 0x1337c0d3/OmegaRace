@@ -138,6 +138,10 @@ set(GRAPHICS_SOURCES
     src/graphics/ExplosionLine.cpp
     src/graphics/PlayerExplosionLine.cpp
     src/graphics/Borders.cpp
+)
+
+set(INPUT_SOURCES
+    src/input/InputManager.cpp
     src/graphics/StatusDisplay.cpp
     src/graphics/Letter.cpp
     src/graphics/Number.cpp
@@ -153,6 +157,7 @@ set(ALL_SOURCES
     ${CORE_SOURCES}
     ${ENTITY_SOURCES}
     ${GRAPHICS_SOURCES}
+    ${INPUT_SOURCES}
     ${AUDIO_SOURCES}
 )
 
@@ -344,6 +349,22 @@ if(PLATFORM_MACOS)
     compile_shader("fs_line" "fragment")
     compile_shader("vs_volumetric_line" "vertex")
     compile_shader("fs_volumetric_line" "fragment")
+    
+    # Enhanced shader effects for Geometry Wars style
+    compile_shader("vs_grid" "vertex")
+    compile_shader("fs_grid" "fragment")
+    compile_shader("vs_particle" "vertex")
+    compile_shader("fs_particle" "fragment")
+    compile_shader("vs_shield" "vertex")
+    compile_shader("fs_shield" "fragment")
+    compile_shader("vs_bloom" "vertex")
+    compile_shader("fs_bloom" "fragment")
+    compile_shader("vs_vapor_trail" "vertex")
+    compile_shader("fs_vapor_trail" "fragment")
+    compile_shader("vs_warp" "vertex")
+    compile_shader("fs_warp" "fragment")
+    compile_shader("vs_electric_barrier" "vertex")
+    compile_shader("fs_electric_barrier" "fragment")
     
     # Create shader compilation target
     add_custom_target(compile_shaders ALL

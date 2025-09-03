@@ -34,6 +34,10 @@ void Borders::initialize() {
     borderColor.green = 255;
     borderColor.blue = 255;
     borderColor.alpha = 255;
+    
+    // Initialize central border electric effect
+    centralBorderElectricOn = false;
+    centralBorderTimer = 0.0f;
 
     int InsideWidth = Window::GetWindowSize().x * 0.666;
     int InsideHight = Window::GetWindowSize().y * 0.24;  // Reduced from 0.25 to 0.24 to avoid bottom clipping
@@ -107,31 +111,80 @@ void Borders::update() {
         if (pTimer->seconds() > outsideLineTimers[line])
             outsideLineOn[line] = false;
     }
+    
+    // Update central border electric effect
+    if (pTimer->seconds() > centralBorderTimer)
+        centralBorderElectricOn = false;
 }
 
 void Borders::draw() {
-    Rectangle r;
-    r.x = insideBorder.x;
-    r.y = insideBorder.y;
-    r.width = insideBorder.w;
-    r.height = insideBorder.h;
-    Window::DrawRect(&r, borderColor);
+    // Create four lines for the rectangle border
+    Line borderLines[4];
+    
+    // Top line
+    borderLines[0].start = Vector2i(insideBorder.x, insideBorder.y);
+    borderLines[0].end = Vector2i(insideBorder.x + insideBorder.w, insideBorder.y);
+    
+    // Right line  
+    borderLines[1].start = Vector2i(insideBorder.x + insideBorder.w, insideBorder.y);
+    borderLines[1].end = Vector2i(insideBorder.x + insideBorder.w, insideBorder.y + insideBorder.h);
+    
+    // Bottom line
+    borderLines[2].start = Vector2i(insideBorder.x + insideBorder.w, insideBorder.y + insideBorder.h);
+    borderLines[2].end = Vector2i(insideBorder.x, insideBorder.y + insideBorder.h);
+    
+    // Left line
+    borderLines[3].start = Vector2i(insideBorder.x, insideBorder.y + insideBorder.h);
+    borderLines[3].end = Vector2i(insideBorder.x, insideBorder.y);
+    
+    // Draw central border - electric when hit, solid white otherwise
+    if (centralBorderElectricOn) {
+        // Electric effect when hit with quadruple thickness
+        double currentTime = pTimer->seconds();
+        double timeRemaining = centralBorderTimer - currentTime;
+        Color borderElectricColor = {0, 200, 255, 255}; // Electric blue for central border
+        
+        for (int i = 0; i < 4; i++) {
+            Window::DrawElectricBarrierLine(&borderLines[i], borderElectricColor, 
+                                          10.0f, 12.0f, (float)timeRemaining); // Quadrupled thickness from 3.0f to 12.0f
+        }
+    } else {
+        // Normal solid white lines
+        Color whiteColor = {255, 255, 255, 255};
+        for (int i = 0; i < 4; i++) {
+            Window::DrawLine(&borderLines[i], whiteColor);
+        }
+    }
 
     for (int dot = 0; dot < 8; dot++) {
         Window::DrawPoint(&insideDots[dot], lineColor);
     }
 
-    // Draw inside field lines with electric shimmer effect
+    // Draw inside field lines with shader-based electric barrier effect
     for (int line = 0; line < 4; line++) {
         if (insideLineOn[line]) {
-            drawElectricShimmerLine(&insideFieldLines[line], insideLineTimers[line]);
+            // Calculate time remaining for fade effect
+            double currentTime = pTimer->seconds();
+            double timeRemaining = insideLineTimers[line] - currentTime;
+            
+            // Use new shader-based electric barrier line with even thicker lines when hit
+            Color electricColor = {0, 255, 255, 255}; // Electric cyan
+            Window::DrawElectricBarrierLine(&insideFieldLines[line], electricColor, 
+                                          15.0f, 12.0f, (float)timeRemaining); // Increased thickness from 8.0f to 12.0f
         }
     }
 
-    // Draw outside field lines with electric shimmer effect
+    // Draw outside field lines with shader-based electric barrier effect
     for (int line = 0; line < 8; line++) {
         if (outsideLineOn[line]) {
-            drawElectricShimmerLine(&outsideFieldLines[line], outsideLineTimers[line]);
+            // Calculate time remaining for fade effect
+            double currentTime = pTimer->seconds();
+            double timeRemaining = outsideLineTimers[line] - currentTime;
+            
+            // Use new shader-based electric barrier line with even thicker lines when hit
+            Color electricColor = {0, 255, 255, 255}; // Electric cyan
+            Window::DrawElectricBarrierLine(&outsideFieldLines[line], electricColor, 
+                                          15.0f, 12.0f, (float)timeRemaining); // Increased thickness from 8.0f to 12.0f
         }
 
         Window::DrawPoint(&outsideDots[line], lineColor);
@@ -148,286 +201,13 @@ void Borders::setOutsideLineHit(int line) {
     outsideLineTimers[line] = pTimer->seconds() + 0.5f; // Longer duration for shimmer effect
 }
 
-void Borders::drawElectricShimmerLine(Line* line, double endTime) {
-    double currentTime = pTimer->seconds();
-    double timeRemaining = endTime - currentTime;
-    double totalDuration = 0.5; // Total effect duration
-
-    // Create pulsing intensity based on sine wave
-    double pulseSpeed = 15.0;                                 // How fast the pulse oscillates
-    double pulse = sin(currentTime * pulseSpeed) * 0.5 + 0.5; // 0 to 1
-
-    // Create electric blue/cyan colors with pulsing intensity
-    Color electricCore;
-    electricCore.red = (int)(50 + pulse * 150);                      // 50-200
-    electricCore.green = (int)(150 + pulse * 105);                   // 150-255
-    electricCore.blue = 255;                                         // Always full blue
-    electricCore.alpha = (int)(200 * timeRemaining / totalDuration); // Fade out over time
-
-    Color electricGlow;
-    electricGlow.red = (int)(100 + pulse * 100);  // 100-200
-    electricGlow.green = (int)(200 + pulse * 55); // 200-255
-    electricGlow.blue = 255;
-    electricGlow.alpha = (int)(150 * timeRemaining / totalDuration); // Fade out over time
-
-    // OPTIMIZED: Single layer electric effect for performance
-    float thickness = 3.0f + (float)(pulse * 2.0f);      // 3-5 pixels
-    float bloomIntensity = 0.4f + (float)(pulse * 0.2f); // 0.4-0.6 (reduced)
-
-    // Draw single electric layer
-    Window::DrawVolumetricLineWithBloom(line, electricCore, thickness, bloomIntensity);
-
-    // Add random electric arcs along the line (sparks)
-    if (pulse > 0.7) { // Only show sparks during peak intensity
-        drawElectricArcs(line, electricCore);
-    }
-}
-
-void Borders::drawElectricArcs(Line* mainLine, const Color& arcColor) {
-    // Calculate line properties
-    Vector2i lineVec = mainLine->end - mainLine->start;
-
-    // Create 2-4 random arcs along the line
-    int numArcs = Window::Random(2, 4);
-
-    for (int i = 0; i < numArcs; i++) {
-        // Random position along the main line (0.0 to 1.0)
-        float t = Window::Random(20, 80) / 100.0f; // 0.2 to 0.8 to avoid endpoints
-
-        // Calculate point on main line
-        Vector2i arcStart;
-        arcStart.x = mainLine->start.x + (int)(lineVec.x * t);
-        arcStart.y = mainLine->start.y + (int)(lineVec.y * t);
-
-        // Create perpendicular vector for arc direction
-        Vector2i perpVec;
-        perpVec.x = -lineVec.y; // Perpendicular
-        perpVec.y = lineVec.x;
-
-        // Normalize and scale the perpendicular vector
-        float perpLength = sqrt((float)(perpVec.x * perpVec.x + perpVec.y * perpVec.y));
-        if (perpLength > 0) {
-            float arcLength = Window::Random(5, 15); // Random arc length
-            perpVec.x = (int)(perpVec.x / perpLength * arcLength);
-            perpVec.y = (int)(perpVec.y / perpLength * arcLength);
-
-            // Random direction (up or down from line)
-            if (Window::Random(0, 1)) {
-                perpVec.x = -perpVec.x;
-                perpVec.y = -perpVec.y;
-            }
-
-            // Create the arc line
-            Line arcLine;
-            arcLine.start = arcStart;
-            arcLine.end = arcStart + perpVec;
-
-            // Draw the electric arc
-            Color sparkColor = arcColor;
-            sparkColor.alpha = sparkColor.alpha / 2; // Dimmer than main line
-            Window::DrawVolumetricLineWithBloom(&arcLine, sparkColor, 1.0f, 0.5f);
-        }
-    }
+void Borders::setCentralBorderHit() {
+    centralBorderElectricOn = true;
+    centralBorderTimer = pTimer->seconds() + 0.5f; // Same duration as field lines
 }
 
 SDL_Rect Borders::getInsideBorder() {
     return insideBorder;
-}
-
-void Borders::drawBackground(const Vector2f& playerPosition) {
-    drawGeometryWarsGrid(playerPosition);
-}
-
-void Borders::drawBackground(const std::vector<DistortionSource>& distortionSources) {
-    drawGeometryWarsGrid(distortionSources);
-}
-
-void Borders::drawGeometryWarsGrid(const Vector2f& playerPosition) {
-    Vector2i windowSize = Window::GetWindowSize();
-
-    // Draw vertical grid lines
-    for (int x = 0; x < windowSize.x + m_GridSpacing; x += m_GridSpacing) {
-        for (int y = 0; y < windowSize.y; y += m_GridSpacing / 4) { // More segments for smoother curves
-            if (y + m_GridSpacing / 4 >= windowSize.y)
-                continue;
-
-            // Calculate distorted positions
-            float distortion1 = calculateGridDistortion((float)x, (float)y, playerPosition);
-            float distortion2 = calculateGridDistortion((float)x, (float)(y + m_GridSpacing / 4), playerPosition);
-
-            // Add very subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.1f; // Reduced from 0.3f to 0.1f
-            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 0.1f;
-
-            Line gridLine;
-            gridLine.start = Vector2i(x + (int)(distortion1 + wave1), y);
-            gridLine.end = Vector2i(x + (int)(distortion2 + wave2), y + m_GridSpacing / 4);
-
-            // Fade lines at edges
-            float edgeFade = 1.0f;
-            if (x < m_GridSpacing * 2 || x > windowSize.x - m_GridSpacing * 2) {
-                edgeFade = 0.3f;
-            }
-
-            Color fadeColor = m_GridColor;
-            fadeColor.alpha = (int)(fadeColor.alpha * edgeFade);
-
-            Window::DrawVolumetricLine(&gridLine, fadeColor);
-        }
-    }
-
-    // Draw horizontal grid lines
-    for (int y = 0; y < windowSize.y + m_GridSpacing; y += m_GridSpacing) {
-        for (int x = 0; x < windowSize.x; x += m_GridSpacing / 4) { // More segments for smoother curves
-            if (x + m_GridSpacing / 4 >= windowSize.x)
-                continue;
-
-            // Calculate distorted positions
-            float distortion1 = calculateGridDistortion((float)x, (float)y, playerPosition);
-            float distortion2 = calculateGridDistortion((float)(x + m_GridSpacing / 4), (float)y, playerPosition);
-
-            // Add very subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.1f; // Reduced from 0.3f to 0.1f
-            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 0.1f;
-
-            Line gridLine;
-            gridLine.start = Vector2i(x, y + (int)(distortion1 + wave1));
-            gridLine.end = Vector2i(x + m_GridSpacing / 4, y + (int)(distortion2 + wave2));
-
-            // Fade lines at edges
-            float edgeFade = 1.0f;
-            if (y < m_GridSpacing * 2 || y > windowSize.y - m_GridSpacing * 2) {
-                edgeFade = 0.3f;
-            }
-
-            Color fadeColor = m_GridColor;
-            fadeColor.alpha = (int)(fadeColor.alpha * edgeFade);
-
-            Window::DrawVolumetricLine(&gridLine, fadeColor);
-        }
-    }
-}
-
-void Borders::drawGeometryWarsGrid(const std::vector<DistortionSource>& distortionSources) {
-    Vector2i windowSize = Window::GetWindowSize();
-
-    // Draw vertical grid lines
-    for (int x = 0; x < windowSize.x + m_GridSpacing; x += m_GridSpacing) {
-        for (int y = 0; y < windowSize.y; y += m_GridSpacing / 4) { // More segments for smoother curves
-            if (y + m_GridSpacing / 4 >= windowSize.y)
-                continue;
-
-            // Calculate distorted positions from multiple sources
-            float distortion1 = calculateGridDistortion((float)x, (float)y, distortionSources);
-            float distortion2 = calculateGridDistortion((float)x, (float)(y + m_GridSpacing / 4), distortionSources);
-
-            // Add very subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.1f; // Reduced from 0.3f to 0.1f
-            float wave2 = sin(m_GridAnimationTime + x * 0.01f + (y + m_GridSpacing / 4) * 0.01f) * 0.1f;
-
-            Line gridLine;
-            gridLine.start = Vector2i(x + (int)(distortion1 + wave1), y);
-            gridLine.end = Vector2i(x + (int)(distortion2 + wave2), y + m_GridSpacing / 4);
-
-            // Fade lines at edges
-            float edgeFade = 1.0f;
-            if (x < m_GridSpacing * 2 || x > windowSize.x - m_GridSpacing * 2) {
-                edgeFade = 0.3f;
-            }
-
-            Color fadeColor = m_GridColor;
-            fadeColor.alpha = (int)(fadeColor.alpha * edgeFade);
-
-            Window::DrawVolumetricLine(&gridLine, fadeColor);
-        }
-    }
-
-    // Draw horizontal grid lines
-    for (int y = 0; y < windowSize.y + m_GridSpacing; y += m_GridSpacing) {
-        for (int x = 0; x < windowSize.x; x += m_GridSpacing / 4) { // More segments for smoother curves
-            if (x + m_GridSpacing / 4 >= windowSize.x)
-                continue;
-
-            // Calculate distorted positions from multiple sources
-            float distortion1 = calculateGridDistortion((float)x, (float)y, distortionSources);
-            float distortion2 = calculateGridDistortion((float)(x + m_GridSpacing / 4), (float)y, distortionSources);
-
-            // Add very subtle wave animation
-            float wave1 = sin(m_GridAnimationTime + x * 0.01f + y * 0.01f) * 0.1f; // Reduced from 0.3f to 0.1f
-            float wave2 = sin(m_GridAnimationTime + (x + m_GridSpacing / 4) * 0.01f + y * 0.01f) * 0.1f;
-
-            Line gridLine;
-            gridLine.start = Vector2i(x, y + (int)(distortion1 + wave1));
-            gridLine.end = Vector2i(x + m_GridSpacing / 4, y + (int)(distortion2 + wave2));
-
-            // Fade lines at edges
-            float edgeFade = 1.0f;
-            if (y < m_GridSpacing * 2 || y > windowSize.y - m_GridSpacing * 2) {
-                edgeFade = 0.3f;
-            }
-
-            Color fadeColor = m_GridColor;
-            fadeColor.alpha = (int)(fadeColor.alpha * edgeFade);
-
-            Window::DrawVolumetricLine(&gridLine, fadeColor);
-        }
-    }
-}
-
-float Borders::calculateGridDistortion(float x, float y, const Vector2f& playerPos) {
-    // Calculate distance from this grid point to player
-    float dx = x - playerPos.x;
-    float dy = y - playerPos.y;
-    float distance = sqrt(dx * dx + dy * dy);
-
-    if (distance > m_DistortionRadius) {
-        return 0.0f; // No distortion beyond radius
-    }
-
-    // Create distortion that falls off with distance
-    float distortionFactor = 1.0f - (distance / m_DistortionRadius);
-    distortionFactor = distortionFactor * distortionFactor; // Smooth falloff
-
-    // Calculate distortion direction (away from player)
-    if (distance < 1.0f)
-        distance = 1.0f; // Avoid division by zero
-    float dirX = dx / distance;
-
-    // Apply distortion
-    return dirX * m_DistortionStrength * distortionFactor;
-}
-
-float Borders::calculateGridDistortion(float x, float y, const std::vector<DistortionSource>& sources) {
-    float totalDistortion = 0.0f;
-
-    for (const auto& source : sources) {
-        // Calculate distance from this grid point to distortion source
-        float dx = x - source.position.x;
-        float dy = y - source.position.y;
-        float distance = sqrt(dx * dx + dy * dy);
-
-        // Use source-specific radius if provided, otherwise use default
-        float radius = (source.radius > 0.0f) ? source.radius : m_DistortionRadius;
-
-        if (distance > radius) {
-            continue; // No distortion beyond radius for this source
-        }
-
-        // Create distortion that falls off with distance
-        float distortionFactor = 1.0f - (distance / radius);
-        distortionFactor = distortionFactor * distortionFactor; // Smooth falloff
-
-        // Calculate distortion direction (away from source)
-        if (distance < 1.0f)
-            distance = 1.0f; // Avoid division by zero
-        float dirX = dx / distance;
-
-        // Apply distortion with source-specific strength
-        float sourceStrength = m_DistortionStrength * source.strength;
-        totalDistortion += dirX * sourceStrength * distortionFactor;
-    }
-
-    return totalDistortion;
 }
 
 void Borders::resetGridBackground() {
@@ -437,6 +217,9 @@ void Borders::resetGridBackground() {
     // Reset grid properties to initial state to clear any residual distortion
     m_DistortionRadius = 120.0f;  // Reset to default radius
     m_DistortionStrength = 15.0f; // Reset to default strength
+    
+    // Reset the actual shader distortion effect
+    Window::ResetGridDistortion();
 }
 
 } // namespace omegarace

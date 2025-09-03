@@ -1,4 +1,5 @@
 #include "GameController.h"
+#include "../input/InputManager.h"
 #include <cmath>
 #include <ctime>
 
@@ -224,8 +225,6 @@ void GameController::draw() {
         distortionSources.push_back(DistortionSource(fighterPos, 1.5f, 100.0f));
     }
 
-    pTheBorders->drawBackground(distortionSources);
-
     // Only draw player if warp transition is not active
     if (!m_WarpActive) {
         pThePlayer->draw();
@@ -262,7 +261,6 @@ void GameController::draw() {
     
     // Draw pause menu last (on top of everything)
     if (m_IsPaused) {
-        std::cout << "GameController::draw() - Game is paused, drawing pause menu" << std::endl;
         pPauseMenu->draw();
     } else {
         // Uncomment this to see how often draw is called
@@ -292,6 +290,9 @@ void GameController::newGame() {
 
     // Reset all entity states to ensure clean start
     resetAllEntityStates();
+    
+    // Reset grid distortion for clean new game start
+    pTheBorders->resetGridBackground();
 
     pThePlayer->newGame();
     pStatus->newGame();
@@ -317,7 +318,7 @@ void GameController::handleInput() {
     bool thrust = false;
 
     // New game controls - only when not in active gameplay
-    if (Window::IsKeyPressed(KEY_N)) {
+    if (InputManager::IsKeyPressed(KEY_N)) {
         // Only allow new game when player is not active (game over, menu screens)
         if (!pThePlayer->getActive()) {
             newGame();
@@ -335,24 +336,24 @@ void GameController::handleInput() {
 
     // === KEYBOARD INPUT ===
     // Turn left (A key or Left arrow)
-    if (Window::IsKeyDown(KEY_A) || Window::IsKeyDown(KEY_LEFT)) {
+    if (InputManager::IsKeyDown(KEY_A) || InputManager::IsKeyDown(KEY_LEFT)) {
         turnLeft = true;
     }
 
     // Turn right (D key or Right arrow)
-    if (Window::IsKeyDown(KEY_D) || Window::IsKeyDown(KEY_RIGHT)) {
+    if (InputManager::IsKeyDown(KEY_D) || InputManager::IsKeyDown(KEY_RIGHT)) {
         turnRight = true;
     }
 
     // Thrust (W key or Up arrow)
-    if (Window::IsKeyDown(KEY_W) || Window::IsKeyDown(KEY_UP)) {
+    if (InputManager::IsKeyDown(KEY_W) || InputManager::IsKeyDown(KEY_UP)) {
         thrust = true;
     }
 
     // Fire (S key, Space, or Left Ctrl) - use proper single shot detection
-    bool spacePressed = Window::IsKeyDown(KEY_SPACE);
-    bool sPressed = Window::IsKeyDown(KEY_S);
-    bool ctrlPressed = Window::IsKeyDown(KEY_LEFT_CONTROL);
+    bool spacePressed = InputManager::IsKeyDown(KEY_SPACE);
+    bool sPressed = InputManager::IsKeyDown(KEY_S);
+    bool ctrlPressed = InputManager::IsKeyDown(KEY_LEFT_CONTROL);
     
     // Fire on key press (transition from not pressed to pressed)
     if ((spacePressed && !m_SpaceKeyWasPressed) ||
@@ -368,12 +369,12 @@ void GameController::handleInput() {
 
     // === CONTROLLER INPUT (ADDITIVE) ===
     // PS4 Controller input handling with enhanced support
-    if (Window::mControllerIndex >= 0) {
-        int gamepadId = Window::mControllerIndex;
+    if (InputManager::IsControllerConnected()) {
+        int gamepadId = 0; // InputManager handles controller detection internally
 
         // === GAME CONTROLS (work during warp) ===
         // Options button for new game - only when player is not active (game over, menu screens)
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) { // Options/Start
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) { // Options/Start
             if (!pThePlayer->getActive()) {
                 // Only when not in active gameplay - start new game
                 newGame();
@@ -382,7 +383,7 @@ void GameController::handleInput() {
 
         // === TURNING CONTROLS ===
         // Method 1: Left analog stick (preferred for smooth control)
-        float leftStickX = Window::GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_LEFT_X);
+        float leftStickX = InputManager::GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_LEFT_X);
         const float STICK_DEADZONE = 0.2f;
 
         // Analog stick turning (smooth)
@@ -393,43 +394,43 @@ void GameController::handleInput() {
         }
 
         // Method 2: D-pad for precise turning (PS4 D-pad)
-        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) { // D-pad Left
+        if (InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) { // D-pad Left
             turnLeft = true;                                                         // Add to keyboard input
         }
-        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) { // D-pad Right
+        if (InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) { // D-pad Right
             turnRight = true;                                                         // Add to keyboard input
         }
 
         // === THRUST CONTROLS ===
         // Method 1: R1 button - PRIMARY
-        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) { // R1 button
+        if (InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) { // R1 button
             thrust = true;                                                            // Add to keyboard input
         }
 
         // Method 2: Right analog stick up
-        float rightStickY = Window::GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_RIGHT_Y);
+        float rightStickY = InputManager::GetGamepadAxisMovement(gamepadId, GAMEPAD_AXIS_RIGHT_Y);
         if (rightStickY < -STICK_DEADZONE) { // Up on right stick
             thrust = true;                   // Add to keyboard input
         }
 
         // === FIRE CONTROLS ===
         // Method 1: X button (PS4 X = bottom face button) - PRIMARY
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) { // X button
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) { // X button
             pThePlayer->fireButtonPressed();
         }
 
         // Method 2: Square button (PS4 Square = left face button)
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) { // Square
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) { // Square
             pThePlayer->fireButtonPressed();
         }
 
         // Method 3: Circle button (PS4 Circle = right face button)
-        if (Window::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) { // Circle
+        if (InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) { // Circle
             thrust = true;                                                             // Add to keyboard input
         }
 
         // Triangle button for special actions
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_UP)) { // Triangle
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_RIGHT_FACE_UP)) { // Triangle
             // Reserved for future features
         }
     }
@@ -863,6 +864,7 @@ bool GameController::playerHit() {
         return true;
     } else {
         pThePlayer->setActive(false);
+        pTheBorders->resetGridBackground(); // Reset grid distortion when player becomes inactive
         pStatus->setState(StatusDisplay::APP_GAMEOVER);
         m_State = 1;
     }
@@ -874,6 +876,9 @@ void GameController::triggerWarpTransition(float duration) {
     m_WarpActive = true;
     m_WarpDuration = duration;
     m_WarpStartTime = pTimer->seconds();
+    
+    // Reset grid distortion during warp transitions to ensure clean background
+    pTheBorders->resetGridBackground();
 }
 
 void GameController::spawnRocks(int waveNumber) {
@@ -1225,19 +1230,30 @@ void GameController::resetAllEntityStates() {
 }
 
 void GameController::handlePauseInput() {
-    // P key toggles pause - handle this separately from menu navigation
-    if (Window::IsKeyPressed(KEY_P)) {
-        std::cout << "P key detected! Calling togglePause()..." << std::endl;
-        togglePause();
-        return; // Exit early to prevent processing menu inputs on the same frame
+    // Only allow pausing during active gameplay (not in menu, game over, or instructions)
+    if (!pThePlayer->getActive() || pStatus->getState() != StatusDisplay::APP_PLAYING) {
+        return; // Don't allow pause in non-gameplay states
     }
     
+    // P key toggles pause - use both key pressed (single frame) and key down (sustained) detection for reliability
+    static bool lastPKeyState = false;
+    bool currentPKeyState = InputManager::IsKeyDown(KEY_P);
+    
+    // Detect rising edge (key was just pressed) - more reliable than IsKeyPressed alone
+    if (currentPKeyState && !lastPKeyState) {
+        std::cout << "P key detected! Calling togglePause()..." << std::endl;
+        togglePause();
+        lastPKeyState = currentPKeyState;
+        return; // Exit early to prevent processing menu inputs on the same frame
+    }
+    lastPKeyState = currentPKeyState;
+    
     // Handle controller pause input (works in all game states)
-    if (Window::mControllerIndex >= 0) {
-        int gamepadId = Window::mControllerIndex;
+    if (InputManager::IsControllerConnected()) {
+        int gamepadId = 0; // InputManager handles controller detection internally
         
         // Options button for pause during gameplay
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) { // Options/Start
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) { // Options/Start
             if (pThePlayer->getActive() && m_State == -1) {
                 // During active gameplay - pause the game
                 std::cout << "Options button detected! Calling togglePause()..." << std::endl;
@@ -1247,7 +1263,7 @@ void GameController::handlePauseInput() {
         }
 
         // Share button for pause during active gameplay (alternative)
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) { // Share/Select
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) { // Share/Select
             // Only trigger pause during active gameplay
             if (pThePlayer->getActive() && m_State == -1) {
                 std::cout << "Share button detected! Calling togglePause()..." << std::endl;
@@ -1262,18 +1278,27 @@ void GameController::handlePauseInput() {
         return;
     }
     
-    // Handle pause menu navigation only when paused
-    // Up/Down arrow keys or W/S for menu navigation
-    if (Window::IsKeyPressed(KEY_UP) || Window::IsKeyPressed(KEY_W)) {
+    // Handle pause menu navigation with reliable edge detection
+    static bool lastUpKeyState = false;
+    static bool lastDownKeyState = false;
+    static bool lastSelectKeyState = false;
+    
+    // Up/Down arrow keys or W/S for menu navigation using edge detection
+    bool currentUpKeyState = InputManager::IsKeyDown(KEY_UP) || InputManager::IsKeyDown(KEY_W);
+    if (currentUpKeyState && !lastUpKeyState) {
         pPauseMenu->handleUp();
     }
+    lastUpKeyState = currentUpKeyState;
     
-    if (Window::IsKeyPressed(KEY_DOWN) || Window::IsKeyPressed(KEY_S)) {
+    bool currentDownKeyState = InputManager::IsKeyDown(KEY_DOWN) || InputManager::IsKeyDown(KEY_S);
+    if (currentDownKeyState && !lastDownKeyState) {
         pPauseMenu->handleDown();
     }
+    lastDownKeyState = currentDownKeyState;
     
-    // Space, or Fire key to select menu option
-    if (Window::IsKeyPressed(KEY_SPACE) || Window::IsKeyPressed(KEY_LEFT_CONTROL)) {
+    // Space or Fire key to select menu option using edge detection
+    bool currentSelectKeyState = InputManager::IsKeyDown(KEY_SPACE) || InputManager::IsKeyDown(KEY_LEFT_CONTROL);
+    if (currentSelectKeyState && !lastSelectKeyState) {
         PauseMenu::MENU_OPTION selectedOption = pPauseMenu->getSelectedOption();
         
         // Handle the selected option
@@ -1289,29 +1314,31 @@ void GameController::handlePauseInput() {
             // End the game the same way as when player runs out of lives
             pPauseMenu->hide();
             pThePlayer->setActive(false);
+            pTheBorders->resetGridBackground(); // Reset grid distortion when player becomes inactive
             pStatus->setState(StatusDisplay::APP_GAMEOVER);
             m_State = 1;
             m_IsPaused = false; // Unpause to allow game over state to display
         }
     }
+    lastSelectKeyState = currentSelectKeyState;
     
     // Handle controller input for pause menu
-    if (Window::mControllerIndex >= 0) {
-        int gamepadId = Window::mControllerIndex;
+    if (InputManager::IsControllerConnected()) {
+        int gamepadId = 0; // InputManager handles controller detection internally
         
         // D-pad up or left stick up
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_UP)) {
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_UP)) {
             pPauseMenu->handleUp();
         }
         
         // D-pad down or left stick down
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_DOWN)) {
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_DOWN)) {
             pPauseMenu->handleDown();
         }
         
         // Face buttons (X, A) for select
-        if (Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_A) || 
-            Window::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_X)) {
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_A) || 
+            InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_X)) {
             PauseMenu::MENU_OPTION selectedOption = pPauseMenu->getSelectedOption();
                 
                 if (selectedOption == PauseMenu::RESUME) {
@@ -1326,6 +1353,7 @@ void GameController::handlePauseInput() {
                     // End the game the same way as when player runs out of lives
                     pPauseMenu->hide();
                     pThePlayer->setActive(false);
+                    pTheBorders->resetGridBackground(); // Reset grid distortion when player becomes inactive
                     pStatus->setState(StatusDisplay::APP_GAMEOVER);
                     m_State = 1;
                     m_IsPaused = false; // Unpause to allow game over state to display
@@ -1352,4 +1380,17 @@ void omegarace::GameController::togglePause() {
         // Audio resume not available in current AudioEngine implementation
         // AudioEngine::ResumeAll();
     }
+}
+
+// NEW: Get player position for grid distortion effects
+omegarace::Vector2f omegarace::GameController::getPlayerPosition() const {
+    if (pThePlayer && pThePlayer->getActive()) {
+        return pThePlayer->getLocation();
+    }
+    return omegarace::Vector2f{0.0f, 0.0f}; // Return default position if no player
+}
+
+// NEW: Check if player is active for grid distortion
+bool omegarace::GameController::isPlayerActive() const {
+    return pThePlayer && pThePlayer->getActive() && !m_WarpActive;
 }

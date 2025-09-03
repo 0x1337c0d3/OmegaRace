@@ -1,17 +1,54 @@
 #include "TriShip.h"
 #include <cmath>
+#include <algorithm>
 
 namespace omegarace {
 
-void TriShip::update(const Vector2f& location, float scale) {
+void TriShip::update(const Vector2f& location, float scale, const Vector2f& velocity) {
     // Store current location and scale for vapour trail positioning
     m_CurrentLocation = location;
     m_CurrentScale = scale;
 
     moveScale(location, scale);
 
-    // Update vapour trail from rear position
-    m_VapourTrail.update(getRearPosition());
+    // Calculate speed and apply velocity-based trail logic
+    float speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+    float speedThreshold = 3.0f; // Lower threshold for TriShip to show more trails
+    
+    // Always ensure vapor trail is active for TriShip
+    m_VapourTrail.setActive(true);
+    
+    if (speed > speedThreshold) {
+        // Calculate movement direction for trail positioning
+        Vector2f movementDirection;
+        if (speed > 0.01f) { // Avoid division by zero
+            movementDirection.x = velocity.x / speed;
+            movementDirection.y = velocity.y / speed;
+        } else {
+            movementDirection.x = 0.0f;
+            movementDirection.y = 0.0f;
+        }
+        
+        // Get rear position and offset it against movement direction
+        Vector2f rearPos = getRearPosition();
+        Vector2f trailStartPos;
+        trailStartPos.x = rearPos.x - movementDirection.x * (20.0f * m_CurrentScale);
+        trailStartPos.y = rearPos.y - movementDirection.y * (20.0f * m_CurrentScale);
+        
+        // Adjust trail length based on speed (25-60 points)
+        int trailLength = 25 + (int)((speed / 60.0f) * 35.0f);
+        if (trailLength > 60) trailLength = 60;
+        
+        // Set trail length dynamically
+        m_VapourTrail.setTrailLength(trailLength);
+        
+        m_VapourTrail.update(trailStartPos);
+    } else {
+        // Even when not meeting speed threshold, update with rear position
+        // to keep some trail visible for TriShip
+        Vector2f rearPos = getRearPosition();
+        m_VapourTrail.update(rearPos);
+    }
 
     // Update menacing animation effects
     m_AnimationTime += 0.1f;
@@ -36,21 +73,21 @@ void TriShip::draw() {
 
             // Outer threat aura (largest, dimmest)
             Color auraColor = m_ThreatColor;
-            auraColor.alpha = (int)(auraColor.alpha * 0.3f * m_PulseIntensity);
+            auraColor.alpha = (int)(auraColor.alpha * 0.4f * m_PulseIntensity);
             for (int line = 0; line < 3; line++) {
-                Window::DrawVolumetricLineWithBloom(&newTriangle[line], auraColor, 4.0f * m_ThreatLevel, 0.8f);
+                Window::DrawVolumetricLineWithBloom(&newTriangle[line], auraColor, 4.5f * m_ThreatLevel, 1.2f);
             }
 
             // Middle menacing glow
             Color glowColor = m_ThreatColor;
             glowColor.alpha = (int)(glowColor.alpha * 0.7f * m_PulseIntensity);
             for (int line = 0; line < 3; line++) {
-                Window::DrawVolumetricLineWithBloom(&newTriangle[line], glowColor, 2.5f * m_ThreatLevel, 0.6f);
+                Window::DrawVolumetricLineWithBloom(&newTriangle[line], glowColor, 3.0f * m_ThreatLevel, 1.0f);
             }
 
             // Core ship structure (brightest)
             for (int line = 0; line < 3; line++) {
-                Window::DrawVolumetricLineWithBloom(&newTriangle[line], m_CoreColor, 1.5f, 0.4f);
+                Window::DrawVolumetricLineWithBloom(&newTriangle[line], m_CoreColor, 2.0f, 0.8f);
             }
 
             // Add menacing special effects
@@ -97,13 +134,13 @@ TriShip::TriShip()
       m_CurrentLocation(0.0f, 0.0f), m_CurrentScale(1.0f) {
     initilize();
 
-    // Set orange trail color for enemy ships
-    Color orangeTrail;
-    orangeTrail.red = 255;
-    orangeTrail.green = 153;
-    orangeTrail.blue = 51;
-    orangeTrail.alpha = 204; // 80% opacity
-    m_VapourTrail.setTrailColor(orangeTrail);
+    // Set pure cyan trail color for TriShip enemies
+    Color cyanTrail;
+    cyanTrail.red = 0;
+    cyanTrail.green = 255;
+    cyanTrail.blue = 255;
+    cyanTrail.alpha = 204; // 80% opacity
+    m_VapourTrail.setTrailColor(cyanTrail);
 }
 
 TriShip::~TriShip() {
@@ -121,8 +158,8 @@ void TriShip::moveScale(const Vector2f& location, float scale) {
 
 Vector2f TriShip::getRearPosition() const {
     // Calculate the rear point of the triangle for vapour trail positioning
-    // The triangle points upward, so the rear is the bottom center
-    Vector2f rearOffset(0.0f, -3.0f); // Offset behind the ship
+    // The triangle points upward (0, -3), so the rear is the bottom center at (0, 2)
+    Vector2f rearOffset(0.0f, 2.0f); // Rear center of the triangle base
 
     // Apply current scaling and location
     rearOffset = rearOffset * m_CurrentScale;
@@ -153,23 +190,22 @@ void TriShip::initilize() {
 }
 
 void TriShip::updateMenacingColors() {
-    // Base threat color - aggressive red with hints of orange
-    m_ThreatColor.red = 255;
-    m_ThreatColor.green = (int)(50 + m_ThreatLevel * 100); // 50-150 for orange tint
-    m_ThreatColor.blue = 0;
-    m_ThreatColor.alpha = (int)(200 * m_PulseIntensity);
+    // Base threat color - pure electric cyan
+    m_ThreatColor.red = 0;
+    m_ThreatColor.green = 255;
+    m_ThreatColor.blue = 255;
+    m_ThreatColor.alpha = (int)(220 * m_PulseIntensity);
 
-    // Core color - bright orange-red for menacing feel
-    m_CoreColor.red = 255;
-    m_CoreColor.green = (int)(150 + m_ThreatLevel * 50); // Bright orange core
-    m_CoreColor.blue = 50;
+    // Core color - pure electric blue
+    m_CoreColor.red = 0;
+    m_CoreColor.green = 100;
+    m_CoreColor.blue = 255;
     m_CoreColor.alpha = (int)(255 * m_PulseIntensity);
 
-    // In aggressive mode, add more red intensity
+    // In aggressive mode, add more intensity
     if (m_AggressiveMode) {
-        m_ThreatColor.green = (int)(m_ThreatColor.green * 0.5f); // More red, less orange
-        m_CoreColor.red = 255;
-        m_CoreColor.green = (int)(m_CoreColor.green * 0.7f);
+        m_ThreatColor.green = (int)(m_ThreatColor.green * 0.7f); // More blue, less cyan
+        m_CoreColor.green = 50; // Even more blue
     }
 }
 

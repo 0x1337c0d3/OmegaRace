@@ -11,8 +11,9 @@ FighterShip::~FighterShip() {
 }
 
 void FighterShip::initilize() {
+    // Pure magenta for Fighter enemies
     m_ShipColor.red = 255;
-    m_ShipColor.green = 255;
+    m_ShipColor.green = 0;
     m_ShipColor.blue = 255;
     m_ShipColor.alpha = 255;
 
@@ -28,8 +29,9 @@ void FighterShip::update(const Vector2f& location, float rotation) {
 }
 
 void FighterShip::draw() {
+    // Use volumetric bloom to showcase the bright magenta colors
     for (int line = 0; line < 2; line++) {
-        Window::DrawVolumetricLine(&newShipLines[line], m_ShipColor);
+        Window::DrawVolumetricLineWithBloom(&newShipLines[line], m_ShipColor, 2.5f, 1.8f);
     }
 }
 

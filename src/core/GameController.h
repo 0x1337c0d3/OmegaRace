@@ -27,6 +27,10 @@ class GameController : Common {
     void handleInput(); // Replaced SDL event handling with direct input handling
     void onPause(bool paused);
     void onScreenSizeChanged(); // NEW: Handle screen size changes for fullscreen
+    
+    // NEW: Get player position for grid distortion effects
+    Vector2f getPlayerPosition() const;
+    bool isPlayerActive() const; // NEW: Check if player is active for grid distortion
 
   private:
     void newGame();

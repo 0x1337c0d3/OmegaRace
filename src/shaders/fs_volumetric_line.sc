@@ -17,20 +17,20 @@ void main()
     float distanceFromCenter = abs(v_texcoord0.y - 0.5) * 2.0;
     
     // Core line - solid center with reasonable falloff
-    float coreAlpha = 1.0 - smoothstep(0.0, 0.6, distanceFromCenter);
+    float coreAlpha = 1.0 - smoothstep(0.0, 0.4, distanceFromCenter);
     
-    // Bloom effect - softer glow around the line
+    // Aggressive bloom effect - much stronger glow around the line
     float bloomFalloff = 1.0 - distanceFromCenter;
-    float bloomAlpha = bloomIntensity * bloomFalloff * bloomFalloff;
+    float aggressiveBloomAlpha = bloomIntensity * 2.0 * bloomFalloff * bloomFalloff * bloomFalloff;
     
-    // Combine core and bloom
-    float totalAlpha = max(coreAlpha, bloomAlpha);
+    // Combine core and aggressive bloom
+    float totalAlpha = max(coreAlpha, aggressiveBloomAlpha);
     
-    // Moderate intensity boost - not too overwhelming
-    totalAlpha = clamp(totalAlpha * 1.5, 0.0, 1.0);
+    // Much more aggressive intensity boost
+    totalAlpha = clamp(totalAlpha * 3.0, 0.0, 1.0);
     
-    // Use color with moderate brightness boost
-    vec3 finalRGB = v_color0.rgb * 1.2;
+    // Use color with aggressive brightness boost and bloom glow
+    vec3 finalRGB = v_color0.rgb * (2.0 + bloomIntensity);
     float finalAlpha = totalAlpha;
     
     gl_FragColor = vec4(finalRGB, finalAlpha);

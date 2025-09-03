@@ -25,21 +25,13 @@ class Borders {
     void update();
     void draw();
     SDL_Rect getInsideBorder();
-    void drawBackground(const Vector2f& playerPosition);
-    void drawBackground(const std::vector<DistortionSource>& distortionSources);
     void setInsideLineHit(int line);
     void setOutsideLineHit(int line);
+    void setCentralBorderHit(); // New method for central border hits
     void initialize();
     void resetGridBackground();
 
   private:
-    void drawGeometryWarsGrid(const Vector2f& playerPosition);
-    void drawGeometryWarsGrid(const std::vector<DistortionSource>& distortionSources);
-    float calculateGridDistortion(float x, float y, const Vector2f& playerPos);
-    float calculateGridDistortion(float x, float y, const std::vector<DistortionSource>& sources);
-    void drawElectricShimmerLine(Line* line, double endTime);
-    void drawElectricArcs(Line* mainLine, const Color& arcColor);
-
     Line outsideLines[4];
     Line insideLines[4];
     Line newOutsideLines[4];
@@ -54,6 +46,10 @@ class Borders {
     float outsideLineTimers[8];
     bool insideLineOn[4];
     bool outsideLineOn[8];
+    
+    // Central border electric effect
+    bool centralBorderElectricOn;
+    float centralBorderTimer;
 
     // Geometry Wars grid background
     int m_GridSpacing;

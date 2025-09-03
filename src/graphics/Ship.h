@@ -11,7 +11,7 @@ class Ship {
     ~Ship();
 
     void initialize();
-    void update(float rotation, const Vector2f& location, float scale);
+    void update(float rotation, const Vector2f& location, float scale, const Vector2f& velocity = Vector2f(0, 0));
     void draw();
 
     // Vapour trail control

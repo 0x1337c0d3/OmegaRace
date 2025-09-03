@@ -23,6 +23,7 @@ class StatusDisplay : Common {
     void setScore(int score);
     void setShip(int ship);
     void setState(GAME_STATE s);
+    GAME_STATE getState() const; // Get current game state
     void setInstructions(bool instruction);
     void newGame();
 

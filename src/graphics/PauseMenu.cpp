@@ -23,11 +23,11 @@ PauseMenu::PauseMenu() {
     m_SelectedColor.blue = 255;
     m_SelectedColor.alpha = 255;
     
-    // Semi-transparent dark background
+    // Fully opaque dark background to block game view
     m_BackgroundColor.red = 0;
     m_BackgroundColor.green = 0;
     m_BackgroundColor.blue = 0;
-    m_BackgroundColor.alpha = 180;
+    m_BackgroundColor.alpha = 255; // Fully opaque instead of 180
     
     // Menu spacing
     m_MenuSpacing = 40;
@@ -67,9 +67,7 @@ void PauseMenu::draw() {
     if (!m_IsVisible) {
         return;
     }
-    
-    std::cout << "PauseMenu::draw() called - menu is visible" << std::endl;
-    
+        
     drawBackground();
     drawMenuOptions();
 }
@@ -136,7 +134,7 @@ void PauseMenu::resetSelection() {
 }
 
 void PauseMenu::drawBackground() {
-    // Draw semi-transparent background overlay
+    // Draw fully opaque background overlay to completely block game view
     Rectangle background;
     background.x = 0;
     background.y = 0;
@@ -145,7 +143,7 @@ void PauseMenu::drawBackground() {
     
     Window::DrawRect(&background, m_BackgroundColor);
     
-    // Draw menu panel background (slightly lighter)
+    // Draw menu panel background (fully opaque with slight blue tint)
     Rectangle menuPanel;
     menuPanel.x = m_MenuPosition.x;
     menuPanel.y = m_MenuPosition.y;
@@ -153,10 +151,10 @@ void PauseMenu::drawBackground() {
     menuPanel.height = m_MenuHeight;
     
     Color panelColor;
-    panelColor.red = 40;
-    panelColor.green = 40;
-    panelColor.blue = 60;
-    panelColor.alpha = 220;
+    panelColor.red = 30;  // Slightly darker
+    panelColor.green = 30;
+    panelColor.blue = 50; // Slight blue tint for contrast
+    panelColor.alpha = 255; // Fully opaque instead of 220
     
     Window::DrawRect(&menuPanel, panelColor);
     

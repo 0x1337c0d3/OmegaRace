@@ -16,10 +16,10 @@ VapourTrail::VapourTrail(int trailLength) {
     m_TrailPoints = new Vector2f[m_TrailLength];
     m_TrailAlpha = new float[m_TrailLength];
 
-    // Set default blue-white vapour color
-    m_TrailColor.red = 180;
-    m_TrailColor.green = 220;
-    m_TrailColor.blue = 255;
+    // Set bright orange default vapour color for fiery trail effect
+    m_TrailColor.red = 255;    // Full red
+    m_TrailColor.green = 140;  // Medium orange
+    m_TrailColor.blue = 0;     // No blue for pure orange
     m_TrailColor.alpha = 255;
 
     clearTrail();
@@ -72,7 +72,7 @@ void VapourTrail::draw() {
     if (!m_Active)
         return;
 
-    // Draw trail from oldest to newest points
+    // Draw trail from oldest to newest points using new shader-based approach
     for (int i = 0; i < m_TrailLength - 1; i++) {
         int currentIndex = (m_TrailIndex + i) % m_TrailLength;
         int nextIndex = (m_TrailIndex + i + 1) % m_TrailLength;
@@ -82,33 +82,75 @@ void VapourTrail::draw() {
             continue;
         }
 
-        // Create line between consecutive trail points
-        Line trailLine;
-        trailLine.start = Vector2i((int)m_TrailPoints[currentIndex].x, (int)m_TrailPoints[currentIndex].y);
-        trailLine.end = Vector2i((int)m_TrailPoints[nextIndex].x, (int)m_TrailPoints[nextIndex].y);
-
         // Calculate distance between points to skip if too far apart
-        float distance =
-            sqrt(pow(trailLine.end.x - trailLine.start.x, 2) + pow(trailLine.end.y - trailLine.start.y, 2));
+        float distance = sqrt(pow(m_TrailPoints[nextIndex].x - m_TrailPoints[currentIndex].x, 2) + 
+                            pow(m_TrailPoints[nextIndex].y - m_TrailPoints[currentIndex].y, 2));
 
         if (distance > 15.0f)
             continue; // Skip large gaps
 
+        // Calculate trail position (0.0 = oldest, 1.0 = newest)
+        float trailPosition = (float)i / (float)(m_TrailLength - 1);
+        
         // Calculate trail color and intensity
         float avgAlpha = (m_TrailAlpha[currentIndex] + m_TrailAlpha[nextIndex]) * 0.5f;
 
-        // Apply alpha to trail color
+        // Apply alpha to trail color with stronger base opacity for smoky effect
         Color trailColor = m_TrailColor;
-        trailColor.alpha = (int)(trailColor.alpha * avgAlpha * 0.6f); // 60% base opacity
+        trailColor.alpha = (int)(trailColor.alpha * avgAlpha * 1.0f); // 100% base opacity for strong visibility
 
-        // Draw trail segment with varying thickness based on age
-        float thickness = m_MinThickness + (m_MaxThickness - m_MinThickness) * avgAlpha;
-        Window::DrawVolumetricLineWithBloom(&trailLine, trailColor, thickness * 2, 0.5f);
+        // Calculate trail width based on age (wider at newer segments) - much thicker
+        float width = m_MinThickness + (m_MaxThickness - m_MinThickness) * avgAlpha;
+        
+        // Use new shader-based vapor trail rendering for smoky effect - much thicker trails
+        Window::DrawVaporTrailSegment(m_TrailPoints[currentIndex], m_TrailPoints[nextIndex], 
+                                    width * 6.0f, trailPosition, trailColor, avgAlpha * 2.0f);
     }
 }
 
 void VapourTrail::setTrailColor(const Color& color) {
     m_TrailColor = color;
+}
+
+void VapourTrail::setTrailLength(int length) {
+    // Only resize if the new length is different and reasonable
+    if (length != m_TrailLength && length > 5 && length < 100) {
+        // Save current trail data
+        Vector2f* oldPoints = m_TrailPoints;
+        float* oldAlpha = m_TrailAlpha;
+        int oldLength = m_TrailLength;
+        int oldIndex = m_TrailIndex;
+        
+        // Update length and allocate new arrays
+        m_TrailLength = length;
+        m_TrailPoints = new Vector2f[m_TrailLength];
+        m_TrailAlpha = new float[m_TrailLength];
+        
+        // Initialize new arrays
+        for (int i = 0; i < m_TrailLength; i++) {
+            m_TrailPoints[i] = Vector2f(0, 0);
+            m_TrailAlpha[i] = 0.0f;
+        }
+        
+        // Copy over existing trail data if we had any
+        if (oldPoints && oldAlpha) {
+            int copyLength = fmin(oldLength, m_TrailLength);
+            for (int i = 0; i < copyLength; i++) {
+                int sourceIndex = (oldIndex + i) % oldLength;
+                m_TrailPoints[i] = oldPoints[sourceIndex];
+                m_TrailAlpha[i] = oldAlpha[sourceIndex];
+            }
+            m_TrailIndex = copyLength % m_TrailLength;
+            
+            // Clean up old arrays
+            delete[] oldPoints;
+            delete[] oldAlpha;
+        } else {
+            m_TrailIndex = 0;
+        }
+        
+        m_UpdateCounter = 0;
+    }
 }
 
 void VapourTrail::setFadeRate(float fadeRate) {

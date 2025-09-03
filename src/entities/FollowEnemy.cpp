@@ -29,7 +29,7 @@ void FollowEnemy::update(double Frame) {
         updateAggressionLevel();
         updateThreatDisplay();
 
-        pTriShip->update(m_Location, m_Scale);
+        pTriShip->update(m_Location, m_Scale, m_Velocity);
         timeToLayMine();
     }
 }

@@ -55,6 +55,11 @@ void Player::initialize() {
 void Player::draw() {
     if (m_Active && !m_Hit) {
         pShip->draw(ShipColor);
+        
+        // Add shield glow effect when player is active
+        Vector2i shieldCenter = {(int)m_Location.x, (int)m_Location.y};
+        float shieldEnergy = 0.8f + 0.2f * sin(pTimer->seconds() * 4.0f); // Pulsing effect
+        Window::DrawShieldGlow(&shieldCenter, 45.0f, shieldEnergy, {100, 200, 255, 120});
 
         if (m_Thrust)
             drawThrust();

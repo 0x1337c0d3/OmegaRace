@@ -23,7 +23,8 @@ void Enemy::update(double Frame) {
 
     if (m_Active) {
         checkForTurn();
-        pShip->update(m_Rotation.amount, m_Location, m_Scale);
+        // Pass velocity information to ship for dynamic vapor trails
+        pShip->update(m_Rotation.amount, m_Location, m_Scale, m_Velocity);
     }
 
     pExplosion->update(Frame);

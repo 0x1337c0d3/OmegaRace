@@ -16,7 +16,7 @@ void DoubleMine::initialize() {
 
 void DoubleMine::draw() {
     if (m_Active) {
-        pMine->update(m_Location, m_Scale);
+        pMine->update(m_Location, m_Scale, m_Velocity);
         pMine->draw();
     }
 }

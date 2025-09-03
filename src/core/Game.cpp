@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "../input/InputManager.h"
 #include <iostream>
 
 namespace omegarace {
@@ -68,7 +69,7 @@ int Game::onExecute() {
         handleInput(); // Process input every frame
 
         // Check for controller connections periodically
-        Window::updateControllerDetection();
+        InputManager::updateControllerDetection();
 
         // Check for fullscreen state changes (e.g., green button clicked)
         if (Window::CheckForFullscreenToggle()) {
@@ -112,7 +113,21 @@ void Game::onUpdate() {
 }
 
 void Game::onRender() {
+    // Draw neon grid background for Geometry Wars style with player distortion
+    // More subtle grid: thinner lines, dimmer colors, lower alpha
+    if (pGameController->isPlayerActive()) {
+        Vector2f playerPos = pGameController->getPlayerPosition();
+        Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, &playerPos);
+    } else {
+        // No distortion when player is inactive
+        Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, nullptr);
+    }
+    
     pGameController->draw();
+    
+    // Apply aggressive post-process bloom effect for enhanced Geometry Wars-style glow
+    // Lower threshold (0.1), much higher intensity (3.5), larger radius (0.05)
+    Window::ApplyPostProcessBloom(0.1f, 3.5f, 0.05f);
 }
 
 void Game::handleInput() {
@@ -120,12 +135,12 @@ void Game::handleInput() {
     // Raylib automatically handles controller detection, so less complex than SDL
 
     // Handle fullscreen toggle (F11 key)
-    if (Window::IsKeyPressed(KEY_F11)) {
+    if (InputManager::IsKeyPressed(KEY_F11)) {
         Window::ToggleFullscreen();
     }
 
     // Handle quit (Escape key)
-    if (Window::IsKeyPressed(KEY_ESCAPE)) {
+    if (InputManager::IsKeyPressed(KEY_ESCAPE)) {
         running = false;
     }
 

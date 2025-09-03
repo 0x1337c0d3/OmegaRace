@@ -17,7 +17,7 @@ LeadEnemy::~LeadEnemy() {
 
 void LeadEnemy::update(double frame) {
     if (m_Active) {
-        pTriShip->update(m_Location, m_Scale);
+        pTriShip->update(m_Location, m_Scale, m_Velocity);
         checkToFire();
     }
 
