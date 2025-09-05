@@ -5,7 +5,12 @@ A modern recreation of the classic 1981 arcade game Omega Race, built with C++ a
 ![Game Version](https://img.shields.io/badge/version-1.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Cross--Platform-lightgrey.svg)
 ![Language](https://img.shields.io/badge/l### Background Grid
-- **Grid Alpha** - Fine-tune background grid transparency to minimize UI interference
+- **Grid Alpha** - Fine-tune background grid tran## 📞 Support
+
+For technical issues or questions:
+- Check the build documentation in `docs/BUILD_README.md`
+- Review system requirements
+- Ensure all dependencies are properly installedcy to minimize UI interference
 - **Grid Distortion** - Optimize grid distortion effects for performance
 - **Rendering Order** - Ensure proper depth sorting between grid, game objects, and UI
 
@@ -164,7 +169,10 @@ src/
 The project uses **CMake** for cross-platform building:
 
 ```bash
-# Quick build (Release mode)
+# Production build and distribution (macOS)
+./scripts/build_release_xcode.sh
+
+# Development build (all platforms)
 ./scripts/build.sh
 
 # Debug build
@@ -250,20 +258,39 @@ cmake --build build --config Release
 ```
 
 ### Build Scripts
-The project includes automated build scripts for various platforms:
+The project includes a comprehensive build script for release distribution:
 
-- **`scripts/build.sh`** - Cross-platform build script with configuration options
-- **`build_release.sh`** - macOS-specific Release build with optional DMG creation  
-- **`build_release_dmg.sh`** - Complete macOS build and distribution pipeline
-- See `BUILD_README.md` for detailed macOS build documentation
+- **`scripts/build_release_xcode.sh`** - Complete Xcode-based build and distribution pipeline
+  - Creates universal binaries (Apple Silicon + Intel)
+  - Signs all frameworks and the app bundle automatically
+  - Generates professional DMG for distribution
+  - Includes proper Applications symlink and documentation
+- **`scripts/build.sh`** - Basic cross-platform development build script
 
 ## 📦 Distribution
 
-The build system creates a professional DMG file for distribution:
-- Self-contained app bundle with all dependencies
-- Code-signed for security
-- Compressed for smaller downloads
-- Includes Applications folder for easy installation
+### macOS Distribution
+The build system creates a professional, distribution-ready DMG:
+
+```bash
+# Build and create signed DMG
+./scripts/build_release_xcode.sh
+```
+
+**Features:**
+- **Universal binary** - Supports both Apple Silicon and Intel Macs
+- **Code signing** - All frameworks and the app bundle are automatically signed
+- **Professional DMG** - Compressed disk image with Applications symlink
+- **Self-contained** - Includes all dependencies (SDL2, FMOD, BGFX)
+- **Ready for distribution** - Can be shared directly with users
+
+**DMG Contents:**
+- Signed `OmegaRace.app` bundle
+- Applications folder symlink for drag-and-drop installation
+- README documentation
+- Optimized compression (UDZO format with maximum compression)
+
+Users can simply mount the DMG and drag OmegaRace.app to their Applications folder.
 
 ## 🎵 Audio
 

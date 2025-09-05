@@ -217,6 +217,9 @@ if(PLATFORM_MACOS)
         @ONLY
     )
     
+    # Set code signing identity
+    set(CODE_SIGN_IDENTITY "8FB540D5B48AE79AA3286E457BFEA42AADD08172")
+    
     # macOS app bundle configuration
     set_target_properties(${PROJECT_NAME} PROPERTIES
         MACOSX_BUNDLE TRUE
@@ -429,6 +432,27 @@ if(PLATFORM_MACOS)
             "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Resources/AppIcon.iconset"
         COMMENT "Creating app icon ICNS file"
     )
+    
+    # Code sign the app bundle after all files are in place
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND codesign --force --verify --verbose --sign "${CODE_SIGN_IDENTITY}"
+            --entitlements "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/OmegaRace.entitlements"
+            --options runtime
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Frameworks/libfmod.dylib"
+        COMMAND codesign --force --verify --verbose --sign "${CODE_SIGN_IDENTITY}"
+            --entitlements "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/OmegaRace.entitlements"
+            --options runtime
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Frameworks/libfmodstudio.dylib"
+        COMMAND codesign --force --verify --verbose --sign "${CODE_SIGN_IDENTITY}"
+            --entitlements "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/OmegaRace.entitlements"
+            --options runtime
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>/Contents/Frameworks/libSDL2-2.0.0.dylib"
+        COMMAND codesign --force --verify --verbose --sign "${CODE_SIGN_IDENTITY}"
+            --entitlements "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/OmegaRace.entitlements"
+            --options runtime
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
+        COMMENT "Code signing app bundle and frameworks"
+    )
 else()
     # Copy resources to build directory
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
@@ -475,11 +499,20 @@ if(PLATFORM_MACOS)
         
         # Sign FMOD frameworks after installation  
         install(CODE "
-            execute_process(COMMAND codesign --force --sign - 
+            execute_process(COMMAND codesign --force --verify --verbose --sign \"${CODE_SIGN_IDENTITY}\"
+                --entitlements \"${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/OmegaRace.entitlements\"
+                --options runtime
                 \${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app/Contents/Frameworks/libfmod.dylib
             )
-            execute_process(COMMAND codesign --force --sign - 
+            execute_process(COMMAND codesign --force --verify --verbose --sign \"${CODE_SIGN_IDENTITY}\"
+                --entitlements \"${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/OmegaRace.entitlements\"
+                --options runtime
                 \${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app/Contents/Frameworks/libfmodstudio.dylib
+            )
+            execute_process(COMMAND codesign --force --verify --verbose --sign \"${CODE_SIGN_IDENTITY}\"
+                --entitlements \"${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/OmegaRace.entitlements\"
+                --options runtime
+                \${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app
             )
         ")
     endif()
