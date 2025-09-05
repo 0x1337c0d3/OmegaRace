@@ -5,7 +5,7 @@
 namespace omegarace {
 
 Game::Game() : running(false), m_AccumulatedTime(0.0), m_LastUpdateTime(0.0) {
-    std::cout << "Game constructor called" << std::endl;
+    // Game constructor
 }
 
 Game::~Game() {
@@ -13,14 +13,11 @@ Game::~Game() {
 }
 
 int Game::onInit() {
-    std::cout << "Game::onInit() called" << std::endl;
     int screenWidth = 1024;
     int screenHeight = 768;
 
     try {
-        std::cout << "Initializing Window..." << std::endl;
         Window::Init(screenWidth, screenHeight, "Omega Race");
-        std::cout << "Window initialized successfully" << std::endl;
     } catch (const std::runtime_error& error) {
         Window::logError(std::cout, "Window OnInit error: " + std::string(error.what()));
         Window::Quit();
@@ -33,37 +30,20 @@ int Game::onInit() {
 void Game::onCleanup() {
 }
 
-int Game::onExecute() {
-    std::cout << "Game::OnExecute() called" << std::endl;
-
-    int status = onInit();
-    if (status != APP_OK) {
-        std::cout << "onInit() failed with status: " << status << std::endl;
-        return status;
+int Game::OnExecute() {
+    if (onInit() == APP_FAILED) {
+        return -1;
     }
-    std::cout << "onInit() completed successfully" << std::endl;
 
-    pTimer = std::make_unique<Timer>();
     pGameController = std::make_unique<GameController>();
-    std::cout << "Created Timer and GameController" << std::endl;
-
-    pGameController->initialize();
-    std::cout << "GameController initialized" << std::endl;
-
+    
+    pTimer = std::make_unique<Timer>();
     pTimer->start();
-    std::cout << "Timer started" << std::endl;
+    
+    pGameController->initialize();
 
     running = true;
-    std::cout << "Entering main loop" << std::endl;
-
-    m_LastTickTime = pTimer->ticks();
-    m_LastUpdateTime = pTimer->seconds();
-    m_AccumulatedTime = 0.0;
-
-    // BGFX main loop
-    while (running && !Window::ShouldClose()) {
-
-        // Process SDL events and update input state FIRST
+    while (running) {        // Process SDL events and update input state FIRST
         Window::BeginFrame();
 
         handleInput(); // Process input every frame
@@ -103,7 +83,9 @@ int Game::onExecute() {
 
         std::this_thread::yield();
     }
-    return status;
+    
+    onCleanup();
+    return 0;
 }
 
 void Game::onUpdate() {
@@ -114,13 +96,15 @@ void Game::onUpdate() {
 
 void Game::onRender() {
     // Draw neon grid background for Geometry Wars style with player distortion
-    // More subtle grid: thinner lines, dimmer colors, lower alpha
-    if (pGameController->isPlayerActive()) {
-        Vector2f playerPos = pGameController->getPlayerPosition();
-        Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, &playerPos);
-    } else {
-        // No distortion when player is inactive
-        Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, nullptr);
+    if (!pGameController->isWarpActive()) {
+        // More subtle grid: thinner lines, dimmer colors, lower alpha
+        if (pGameController->isPlayerActive()) {
+            Vector2f playerPos = pGameController->getPlayerPosition();
+            Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, &playerPos);
+        } else {
+            // No distortion when player is inactive
+            Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, nullptr);
+        }
     }
     
     pGameController->draw();

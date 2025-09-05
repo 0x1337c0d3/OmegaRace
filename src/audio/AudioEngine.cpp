@@ -9,26 +9,16 @@ namespace omegarace {
 CAudioEngineImpl* mImplementation = nullptr;
 
 CAudioEngineImpl::CAudioEngineImpl() {
-    std::cout << "CAudioEngineImpl constructor called" << std::endl;
-
     mStudioSystem = nullptr;
-    std::cout << "Creating FMOD Studio System..." << std::endl;
     FMOD_RESULT result = FMOD::Studio::System::create(&mStudioSystem);
-    std::cout << "FMOD::Studio::System::create() returned: " << result << std::endl;
     AudioEngine::ErrorCheck(result);
 
-    std::cout << "Initializing FMOD Studio System..." << std::endl;
     result = mStudioSystem->initialize(32, FMOD_STUDIO_INIT_LIVEUPDATE, FMOD_INIT_PROFILE_ENABLE, nullptr);
-    std::cout << "mStudioSystem->initialize() returned: " << result << std::endl;
     AudioEngine::ErrorCheck(result);
 
     mSystem = nullptr;
-    std::cout << "Getting FMOD Core System..." << std::endl;
     result = mStudioSystem->getCoreSystem(&mSystem);
-    std::cout << "mStudioSystem->getCoreSystem() returned: " << result << std::endl;
     AudioEngine::ErrorCheck(result);
-
-    std::cout << "CAudioEngineImpl constructor completed successfully" << std::endl;
 }
 
 CAudioEngineImpl::~CAudioEngineImpl() {
@@ -58,11 +48,8 @@ void CAudioEngineImpl::Update() {
 
 void AudioEngine::Init() {
     Logger::Info("Initializing audio engine");
-    std::cout << "AudioEngine::Init() called" << std::endl;
 
-    std::cout << "Creating CAudioEngineImpl..." << std::endl;
     mImplementation = new CAudioEngineImpl;
-    std::cout << "CAudioEngineImpl created successfully, mImplementation = " << mImplementation << std::endl;
 }
 
 void AudioEngine::Update() {
@@ -86,26 +73,19 @@ int AudioEngine::ErrorCheck(FMOD_RESULT result) {
 }
 
 void AudioEngine::LoadSound(const std::string& sSoundName, bool b3d, bool bLooping, bool bStream) {
-    std::cout << "LoadSound: Starting to load sound: " << sSoundName << std::endl;
-
     // Check if mImplementation is valid
     if (!mImplementation) {
-        std::cout << "LoadSound: ERROR - mImplementation is null!" << std::endl;
         return;
     }
-    std::cout << "LoadSound: mImplementation is valid" << std::endl;
 
     // Check if mSystem is valid
     if (!mImplementation->mSystem) {
-        std::cout << "LoadSound: ERROR - mImplementation->mSystem is null!" << std::endl;
         return;
     }
-    std::cout << "LoadSound: mSystem is valid" << std::endl;
 
     // check if the sound is loaded
     auto tFoundIt = mImplementation->mSounds.find(sSoundName);
     if (tFoundIt != mImplementation->mSounds.end()) {
-        std::cout << "LoadSound: Sound already loaded: " << sSoundName << std::endl;
         return;
     }
 
@@ -117,24 +97,15 @@ void AudioEngine::LoadSound(const std::string& sSoundName, bool b3d, bool bLoopi
     // load the sound
     FMOD::Sound* sound = nullptr;
     std::string path = Window::dataPath() + "/audio/" + sSoundName + ".wav";
-    std::cout << "LoadSound: Attempting to load from path: " << path << std::endl;
-
-    // Add debug info before the critical call
-    std::cout << "LoadSound: About to call mSystem->createSound() for: " << sSoundName << std::endl;
-    std::cout << "LoadSound: Total sounds loaded so far: " << mImplementation->mSounds.size() << std::endl;
 
     FMOD_RESULT result = mImplementation->mSystem->createSound(path.c_str(), eMode, nullptr, &sound);
-    std::cout << "LoadSound: createSound returned result: " << result << std::endl;
 
     AudioEngine::ErrorCheck(result);
     if (sound) {
         mImplementation->mSounds[sSoundName] = sound;
-        std::cout << "LoadSound: Successfully loaded sound: " << sSoundName << std::endl;
 
         // Add small delay to prevent FMOD internal memory corruption
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    } else {
-        std::cout << "LoadSound: Failed to load sound: " << sSoundName << std::endl;
     }
 }
 

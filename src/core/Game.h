@@ -15,7 +15,7 @@ class Game {
     Game();
     ~Game();
 
-    int onExecute();
+    int OnExecute();
 
   private:
     std::unique_ptr<Timer> pTimer;

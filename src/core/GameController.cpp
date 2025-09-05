@@ -9,29 +9,15 @@ static StatusDisplay::GAME_STATE states[3] = {StatusDisplay::APP_START, StatusDi
                                               StatusDisplay::APP_GAMEOVER};
 
 GameController::GameController() {
-    std::cout << "GameController constructor starting..." << std::endl;
-
-    std::cout << "Creating Player..." << std::endl;
     pThePlayer = std::make_unique<Player>();
-    std::cout << "Player created successfully" << std::endl;
 
-    std::cout << "Creating Borders..." << std::endl;
     pTheBorders = std::make_unique<Borders>();
-    std::cout << "Borders created successfully" << std::endl;
 
-    std::cout << "Creating EnemyController..." << std::endl;
     pTheEnemyController = std::make_unique<EnemyController>();
-    std::cout << "EnemyController created successfully" << std::endl;
 
-    std::cout << "Creating StatusDisplay..." << std::endl;
     pStatus = std::make_unique<StatusDisplay>();
-    std::cout << "StatusDisplay created successfully" << std::endl;
 
-    std::cout << "Creating PauseMenu..." << std::endl;
-    pPauseMenu = std::make_unique<PauseMenu>();
-    std::cout << "PauseMenu created successfully" << std::endl;
-
-    m_Score = 0;
+    pPauseMenu = std::make_unique<PauseMenu>();    m_Score = 0;
     m_PlayerShips = 4; // Start with 4 extra lives (5 total including current life)
     m_EndOfWave = false;
     m_State = -1;
@@ -52,6 +38,7 @@ GameController::GameController() {
     m_WarpActive = false;
     m_WarpDuration = 2.0f;
     m_WarpStartTime = 0.0f;
+    
     m_IsFirstWave = true;
     m_WaitingForWarp = false;
     
@@ -165,28 +152,30 @@ void GameController::update(double Frame) {
     if (m_EndOfWave) {
         if (!pTheEnemyController->checkExploding()) {
             if (!m_WaitingForWarp) {
-                // First time wave ends - clean up and trigger warp
-                completeWaveCleanup();       // NEW: Clean up all remaining entities
-                triggerWarpTransition(1.8f); // Trigger warp effect
-                m_WaitingForWarp = true;     // Set flag to wait for warp completion
-            } else if (!m_WarpActive) {
-                // Warp has completed - now spawn the new wave
-                spawnNewWave(pTheEnemyController->newWave());
+                // First time wave ends - clean up and trigger warp transition
+                completeWaveCleanup();       // Clean up all remaining entities
+                triggerWarpTransition(2.0f); // Trigger warp effect for level transition
+                m_WaitingForWarp = true;     // Set flag to wait for effect completion
+            }
+            // Check if warp has completed
+            if (!m_WarpActive && m_WaitingForWarp) {
+                // Warp completed - spawn new wave
+                spawnNewWave(pTheEnemyController->restartWave());
                 m_EndOfWave = false;
                 m_WaitingForWarp = false;
             }
-            // If m_WarpActive is still true, just wait for it to complete
+        }
+    } else if (m_IsFirstWave && m_WaitingForWarp) {
+        // Handle first wave spawn after new game warp transition
+        if (!m_WarpActive) {
+            // Warp completed - spawn first wave
+            spawnNewWave(pTheEnemyController->newGame());
+            m_IsFirstWave = false;
+            m_WaitingForWarp = false;
         }
     } else if (m_Respawn) {
-        // Check if player explosion is finished before allowing respawn
-        if (!pThePlayer->getExplosionOn()) {
-            // Player explosion is finished, trigger warp transition if not already active
-            if (!m_WarpActive) {
-                triggerWarpTransition(1.5f); // Trigger warp effect for player respawn
-            }
-        }
-
         if (m_Timer < pTimer->seconds()) {
+            // Only spawn new wave when dissolution effect has completed
             spawnNewWave(pTheEnemyController->restartWave());
             m_Respawn = false;
         }
@@ -213,29 +202,31 @@ void GameController::draw() {
     // Create distortion sources for grid warping
     std::vector<DistortionSource> distortionSources;
 
-    // Only add player as distortion source if active and visible
+    // Only add player as distortion source if active, visible, and not during warp
     if (pThePlayer->getActive() && !m_WarpActive) {
         distortionSources.push_back(DistortionSource(playerPos, 1.0f));
     }
 
     // Add Fighter distortion if active - more intense warping effect
-    if (pFighter && pFighter->getActive()) {
+    // But not during warp transitions to keep effect clean
+    if (pFighter && pFighter->getActive() && !m_WarpActive) {
         Vector2f fighterPos = pFighter->getLocation();
         // Fighter creates stronger distortion with larger radius for more dramatic effect
         distortionSources.push_back(DistortionSource(fighterPos, 1.5f, 100.0f));
     }
 
-    // Only draw player if warp transition is not active
+    // First 50% - still draw entities normally, but not during warp
     if (!m_WarpActive) {
         pThePlayer->draw();
+        pTheEnemyController->draw();
+        drawRocks();
+        drawUFO();
     }
-    pTheEnemyController->draw();
-    drawRocks(); // Draw rocks
-    drawUFO();   // Draw UFO
+    
     pTheBorders->draw();
     pStatus->draw();
 
-    // Draw full screen warp transition effect if active
+    // Draw full screen warp transition effect if active (only used for special transitions like new game)
     if (m_WarpActive) {
         float elapsedTime = pTimer->seconds() - m_WarpStartTime;
         float warpProgress = elapsedTime / m_WarpDuration;
@@ -256,20 +247,19 @@ void GameController::draw() {
             Window::EndWarpTransition();
         } else {
             m_WarpActive = false; // Effect finished
+            
+            // Reactivate player after warp transition ends
+            pThePlayer->setActive(true);
         }
     }
     
     // Draw pause menu last (on top of everything)
     if (m_IsPaused) {
         pPauseMenu->draw();
-    } else {
-        // Uncomment this to see how often draw is called
-        // std::cout << "GameController::draw() - Game is not paused" << std::endl;
     }
 }
 
 void GameController::newGame() {
-    triggerWarpTransition(2.5f); // Longer warp for new game
     m_IsFirstWave = true;        // Reset flag for new game
     m_WaitingForWarp = false;    // Reset wave waiting flag for new game
 
@@ -296,12 +286,16 @@ void GameController::newGame() {
 
     pThePlayer->newGame();
     pStatus->newGame();
-    spawnNewWave(pTheEnemyController->newGame());
     m_Score = 0;
     m_PlayerShips = 4;
     m_NextBonusLifeThreshold = 50000;
     pStatus->setShip(m_PlayerShips);
     m_EndOfWave = false;
+    
+    // Trigger warp transition before spawning first wave
+    triggerWarpTransition(2.0f);
+    m_WaitingForWarp = true;
+    
     AudioEngine::PlayEvent("event:/Horizontal Souls");
 }
 
@@ -311,42 +305,31 @@ void GameController::handleInput() {
         return;
     }
     
-    // Combined keyboard and controller input handling
-    // Start with keyboard states
-    bool turnLeft = false;
-    bool turnRight = false;
-    bool thrust = false;
-
-    // New game controls - only when not in active gameplay
-    if (InputManager::IsKeyPressed(KEY_N)) {
-        // Only allow new game when player is not active (game over, menu screens)
-        if (!pThePlayer->getActive()) {
-            newGame();
-        }
-    }
-
-    // Controller new game controls - Options button starts new game
-    if (InputManager::IsControllerConnected()) {
-        static bool previousOptionsState = false;
-        bool currentOptionsState = InputManager::IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_RIGHT); // Options button
-        
-        // Edge detection for Options button
-        if (currentOptionsState && !previousOptionsState) {
-            // Only allow new game when player is not active (game over, menu screens)
-            if (!pThePlayer->getActive()) {
-                newGame();
-            }
-        }
-        previousOptionsState = currentOptionsState;
-    }
-
-    // Block player movement and firing during warp transition
+    // Block ALL input during warp transition
     if (m_WarpActive) {
         // Apply disabled input states during warp
         pThePlayer->setTurnLeft(false);
         pThePlayer->setTurnRight(false);
         pThePlayer->setThrust(false);
         return; // Exit early, no further input processing during warp
+    }
+    
+    // Combined keyboard and controller input handling
+    // Start with keyboard states
+    bool turnLeft = false;
+    bool turnRight = false;
+    bool thrust = false;
+
+    // New game controls - combined keyboard and controller (only when not in active gameplay)
+    bool newGamePressed = InputManager::IsKeyPressed(KEY_N) || 
+                         (InputManager::IsControllerConnected() && 
+                          InputManager::IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)); // Options button
+    
+    if (newGamePressed) {
+        // Only allow new game when player is not active (game over, menu screens)
+        if (!pThePlayer->getActive()) {
+            newGame();
+        }
     }
 
     // === KEYBOARD INPUT ===
@@ -886,6 +869,14 @@ void GameController::triggerWarpTransition(float duration) {
     m_WarpDuration = duration;
     m_WarpStartTime = pTimer->seconds();
     
+    // Hide player completely during warp transition
+    pThePlayer->setActive(false);
+    
+    // Immediately stop player movement during warp
+    pThePlayer->setTurnLeft(false);
+    pThePlayer->setTurnRight(false);
+    pThePlayer->setThrust(false);
+    
     // Reset grid distortion during warp transitions to ensure clean background
     pTheBorders->resetGridBackground();
 }
@@ -1250,7 +1241,6 @@ void GameController::handlePauseInput() {
     
     // Detect rising edge (key was just pressed) - more reliable than IsKeyPressed alone
     if (currentPKeyState && !lastPKeyState) {
-        std::cout << "P key detected! Calling togglePause()..." << std::endl;
         togglePause();
         lastPKeyState = currentPKeyState;
         return; // Exit early to prevent processing menu inputs on the same frame
@@ -1261,71 +1251,28 @@ void GameController::handlePauseInput() {
     if (InputManager::IsControllerConnected()) {
         int gamepadId = 0; // InputManager handles controller detection internally
         
-        // Static variables for edge detection (prevent rapid toggling)
-        static bool lastOptionsButtonState = false;
-        static bool lastShareButtonState = false;
-        
-        // Debug: Check all relevant buttons to see which ones are working
-        static int debugCounter = 0;
-        debugCounter++;
-        if (debugCounter % 120 == 0) { // Every 2 seconds
-            std::cout << "=== Controller Debug Info ===" << std::endl;
-            std::cout << "Controller: " << InputManager::GetControllerName() << std::endl;
-            std::cout << "Player active: " << pThePlayer->getActive() << ", Game state: " << m_State << ", Paused: " << m_IsPaused << std::endl;
-            
-            // Test all middle buttons
-            if (InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
-                std::cout << "MIDDLE_RIGHT (Options/Start) is DOWN" << std::endl;
-            }
-            if (InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT)) {
-                std::cout << "MIDDLE_LEFT (Share/Select) is DOWN" << std::endl;
-            }
-        }
-        
-        // Use edge detection for pause buttons (only trigger on press, not hold)
-        bool currentOptionsState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT);
-        bool currentShareState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT);
-        
-        bool optionsPressed = currentOptionsState && !lastOptionsButtonState;
-        bool sharePressed = currentShareState && !lastShareButtonState;
-        
-        // Update last states
-        lastOptionsButtonState = currentOptionsState;
-        lastShareButtonState = currentShareState;
-        
-        if (optionsPressed) {
-            std::cout << "*** MIDDLE_RIGHT (Options) button PRESSED detected! ***" << std::endl;
-        }
-        if (sharePressed) {
-            std::cout << "*** MIDDLE_LEFT (Share) button PRESSED detected! ***" << std::endl;
-        }
+        // Use proper pressed detection (only trigger on press, not hold)
+        bool optionsPressed = InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+        bool sharePressed = InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT);
         
         // Options button for RESUME game (start new game logic moved to main update)
         if (optionsPressed) {
-            std::cout << "*** Options button pressed - checking for resume ***" << std::endl;
-            std::cout << "Player active: " << pThePlayer->getActive() << ", Paused: " << m_IsPaused << std::endl;
             if (pThePlayer->getActive() && m_IsPaused) {
                 // Game is paused - resume
-                std::cout << "Resuming game with Options button!" << std::endl;
                 togglePause(); // This will unpause
                 return;
-            } else {
-                std::cout << "Options pressed but not in pausable state - doing nothing" << std::endl;
             }
             // Note: New game logic is now handled in main update method before handlePauseInput
         }
 
         // Share button for PAUSE/UNPAUSE during active gameplay
         if (sharePressed) {
-            std::cout << "Share button pressed - checking for pause/unpause..." << std::endl;
             if (pThePlayer->getActive() && !m_IsPaused) {
                 // During active gameplay - pause the game
-                std::cout << "Pausing game with Share button!" << std::endl;
                 togglePause();
                 return;
             } else if (pThePlayer->getActive() && m_IsPaused) {
                 // Game is paused - unpause it
-                std::cout << "Unpausing game with Share button!" << std::endl;
                 togglePause();
                 return;
             }
@@ -1382,33 +1329,22 @@ void GameController::handlePauseInput() {
     }
     lastSelectKeyState = currentSelectKeyState;
     
-    // Handle controller input for pause menu with manual edge detection
+    // Handle controller input for pause menu with proper pressed detection
     if (InputManager::IsControllerConnected()) {
         int gamepadId = 0; // InputManager handles controller detection internally
         
-        // Static variables for edge detection (similar to keyboard input above)
-        static bool lastDpadUpState = false;
-        static bool lastDpadDownState = false;
-        static bool lastSelectButtonState = false;
-        
-        // D-pad up navigation with edge detection
-        bool currentDpadUpState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_DPAD_UP);
-        if (currentDpadUpState && !lastDpadUpState) {
+        // D-pad navigation with proper pressed detection
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_UP)) {
             pPauseMenu->handleUp();
         }
-        lastDpadUpState = currentDpadUpState;
         
-        // D-pad down navigation with edge detection
-        bool currentDpadDownState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_DPAD_DOWN);
-        if (currentDpadDownState && !lastDpadDownState) {
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_DOWN)) {
             pPauseMenu->handleDown();
         }
-        lastDpadDownState = currentDpadDownState;
         
-        // Face buttons (X, A) for select with edge detection
-        bool currentSelectButtonState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_A) || 
-                                       InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_X);
-        if (currentSelectButtonState && !lastSelectButtonState) {
+        // Face buttons (X, A) for select with proper pressed detection
+        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_A) || 
+            InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_X)) {
             PauseMenu::MENU_OPTION selectedOption = pPauseMenu->getSelectedOption();
             
             if (selectedOption == PauseMenu::RESUME) {
@@ -1429,23 +1365,17 @@ void GameController::handlePauseInput() {
                 m_IsPaused = false; // Unpause to allow game over state to display
             }
         }
-        lastSelectButtonState = currentSelectButtonState;
     }
 }
 
 void omegarace::GameController::togglePause() {
     m_IsPaused = !m_IsPaused;
     
-    std::cout << "togglePause called - m_IsPaused is now: " << (m_IsPaused ? "true" : "false") << std::endl;
-    
     if (m_IsPaused) {
-        std::cout << "Showing pause menu..." << std::endl;
         pPauseMenu->show();
-        std::cout << "Pause menu visibility: " << (pPauseMenu->isVisible() ? "visible" : "hidden") << std::endl;
         // Audio pause not available in current AudioEngine implementation
         // AudioEngine::PauseAll();
     } else {
-        std::cout << "Hiding pause menu..." << std::endl;
         pPauseMenu->hide();
         // Audio resume not available in current AudioEngine implementation
         // AudioEngine::ResumeAll();
@@ -1463,6 +1393,11 @@ omegarace::Vector2f omegarace::GameController::getPlayerPosition() const {
 // NEW: Check if player is active for grid distortion
 bool omegarace::GameController::isPlayerActive() const {
     return pThePlayer && pThePlayer->getActive() && !m_WarpActive;
+}
+
+// NEW: Check if warp transition is active
+bool omegarace::GameController::isWarpActive() const {
+    return m_WarpActive;
 }
 
 } // namespace omegarace

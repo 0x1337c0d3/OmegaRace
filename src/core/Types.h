@@ -54,6 +54,7 @@ enum KeyCode {
     KEY_S = 115,
     KEY_N = 110,
     KEY_P = 112,
+    KEY_T = 116,
     KEY_LEFT = 1073741904,
     KEY_RIGHT = 1073741903,
     KEY_UP = 1073741906,

@@ -1,48 +1,51 @@
 #!/bin/bash
 
-# OmegaRace Release Build and DMG Creation Script
-# This script builds the Release version and creates a DMG file for distribution
+# OmegaRace CMake-based Release Build and DMG Creation Script
+# This script builds the Release version using CMake and creates a DMG file for distribution
 
 set -e  # Exit on any error
 
 # Configuration
 PROJECT_NAME="OmegaRace"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROJECT_FILE="OmegaRace.xcodeproj"
-SCHEME="OmegaRace"
-BUILD_CONFIG="Release"
+BUILD_DIR="$PROJECT_DIR/build"
 BUNDLE_NAME="OmegaRace.app"
 DMG_NAME="OmegaRace-$(date +%Y%m%d)"
-DIST_DIR="/Users/peter/Development/OmegaRace/dist"
+DIST_DIR="$PROJECT_DIR/dist"
 TEMP_DMG_DIR="/tmp/OmegaRace_dmg_temp"
 
 echo "========================================"
-echo "OmegaRace Release Build & DMG Creation"
+echo "OmegaRace CMake Release Build & DMG Creation"
 echo "========================================"
 echo "Date: $(date)"
-echo "Build Configuration: $BUILD_CONFIG"
-echo "Project: $PROJECT_DIR/$PROJECT_FILE"
+echo "Build System: CMake"
+echo "Project: $PROJECT_DIR"
 echo ""
 
 # Change to project directory
 cd "$PROJECT_DIR"
 
+# Create and enter build directory
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
+
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."
-xcodebuild -project "$PROJECT_FILE" -scheme "$SCHEME" -configuration "$BUILD_CONFIG" clean
+rm -rf *
+
+# Configure CMake for Release
+echo "⚙️ Configuring CMake (Release)..."
+cmake -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+      "$PROJECT_DIR"
 
 # Build Release version
 echo "🔨 Building Release version..."
-xcodebuild -project "$PROJECT_FILE" \
-           -scheme "$SCHEME" \
-           -configuration "$BUILD_CONFIG" \
-           -derivedDataPath "./DerivedData" \
-           build
+cmake --build . --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
 
 # Check if build was successful
-BUILD_PRODUCTS_DIR="./DerivedData/Build/Products/$BUILD_CONFIG"
-if [ ! -d "$BUILD_PRODUCTS_DIR/$BUNDLE_NAME" ]; then
-    echo "❌ Build failed! $BUNDLE_NAME not found in $BUILD_PRODUCTS_DIR"
+if [ ! -d "$BUNDLE_NAME" ]; then
+    echo "❌ Build failed! $BUNDLE_NAME not found in $BUILD_DIR"
     exit 1
 fi
 
@@ -58,21 +61,21 @@ mkdir -p "$TEMP_DMG_DIR"
 
 # Copy the app bundle to temp directory
 echo "📦 Copying app bundle..."
-cp -R "$BUILD_PRODUCTS_DIR/$BUNDLE_NAME" "$TEMP_DMG_DIR/"
+cp -R "$BUILD_DIR/$BUNDLE_NAME" "$TEMP_DMG_DIR/"
 
 # Create Applications symlink for easy installation
 echo "🔗 Creating Applications symlink..."
 ln -s /Applications "$TEMP_DMG_DIR/Applications"
 
 # Optional: Add README or license files
-if [ -f "/Users/peter/Development/OmegaRace/README.md" ]; then
-    cp "/Users/peter/Development/OmegaRace/README.md" "$TEMP_DMG_DIR/"
+if [ -f "$PROJECT_DIR/README.md" ]; then
+    cp "$PROJECT_DIR/README.md" "$TEMP_DMG_DIR/"
 fi
 
 # Get app version if available
 APP_VERSION=""
-if [ -f "$BUILD_PRODUCTS_DIR/$BUNDLE_NAME/Contents/Info.plist" ]; then
-    APP_VERSION=$(defaults read "$BUILD_PRODUCTS_DIR/$BUNDLE_NAME/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "")
+if [ -f "$BUILD_DIR/$BUNDLE_NAME/Contents/Info.plist" ]; then
+    APP_VERSION=$(defaults read "$BUILD_DIR/$BUNDLE_NAME/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "")
     if [ -n "$APP_VERSION" ]; then
         DMG_NAME="OmegaRace-v$APP_VERSION-$(date +%Y%m%d)"
     fi

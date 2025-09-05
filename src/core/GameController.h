@@ -31,6 +31,7 @@ class GameController : Common {
     // NEW: Get player position for grid distortion effects
     Vector2f getPlayerPosition() const;
     bool isPlayerActive() const; // NEW: Check if player is active for grid distortion
+    bool isWarpActive() const;   // NEW: Check if warp transition is active
 
   private:
     void newGame();
@@ -104,6 +105,7 @@ class GameController : Common {
     bool m_WarpActive;
     float m_WarpDuration;
     float m_WarpStartTime;
+        
     bool m_IsFirstWave;
     bool m_WaitingForWarp; // NEW: Flag to indicate we're waiting for warp to complete before spawning
 

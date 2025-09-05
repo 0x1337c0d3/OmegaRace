@@ -223,17 +223,20 @@ if(PLATFORM_MACOS)
         MACOSX_BUNDLE_BUNDLE_NAME "OmegaRace"
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
-        MACOSX_BUNDLE_IDENTIFIER "com.omegarace.game"
+        MACOSX_BUNDLE_IDENTIFIER "au.com.onereddog.omegarace"
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
         MACOSX_BUNDLE_EXECUTABLE_NAME "${PROJECT_NAME}"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.omegarace.game"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "au.com.onereddog.omegarace"
         MACOSX_BUNDLE_ICON_FILE "AppIcon"
         XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/OmegaRace.entitlements"
-        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.omegarace.game"
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "au.com.onereddog.omegarace"
         XCODE_ATTRIBUTE_DEVELOPMENT_LANGUAGE "en"
         XCODE_ATTRIBUTE_EXECUTABLE_NAME "${PROJECT_NAME}"
         XCODE_ATTRIBUTE_PRODUCT_NAME "OmegaRace"
         XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "10.15"
+        XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "ASB8U9Q83W"
+        XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development"
+        XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"
     )
 
     # Copy FMOD dylibs to app bundle after build
@@ -273,7 +276,12 @@ endif()
 # Resource handling
 if(PLATFORM_MACOS)
     # Define shader compiler variables
-    set(SHADERC_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/_deps/bgfx.cmake-build/cmake/bgfx/shaderc")
+    # Handle multi-config generators like Xcode that put binaries in config-specific subdirectories
+    if(CMAKE_GENERATOR MATCHES "Xcode")
+        set(SHADERC_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/_deps/bgfx.cmake-build/cmake/bgfx/$<CONFIG>/shaderc")
+    else()
+        set(SHADERC_EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/_deps/bgfx.cmake-build/cmake/bgfx/shaderc")
+    endif()
     set(BGFX_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps/bgfx.cmake-src/bgfx/src")
     set(SHADER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders")
     set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")

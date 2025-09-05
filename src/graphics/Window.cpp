@@ -1,6 +1,8 @@
 #include "Window.h"
 #include "MetalLayerSetup.h"
 #include "../input/InputManager.h"
+#include "../core/GameController.h"
+#include "../core/Logger.h"
 #include <SDL2/SDL_syswm.h>
 #include <algorithm>
 #include <bgfx/bgfx.h>
@@ -100,10 +102,8 @@ void Window::Init(int width, int height, std::string title) {
     // Try to load shader programs, but continue without them if loading fails
     mLineProgram = loadProgram("vs_line", "fs_line");
     if (!bgfx::isValid(mLineProgram)) {
-        std::cout << "ERROR: Custom line shaders FAILED to load - using BGFX built-in rendering" << std::endl;
+        omegarace::Logger::Error("Custom line shaders FAILED to load", "using BGFX built-in rendering");
         mLineProgram = BGFX_INVALID_HANDLE;
-    } else {
-        std::cout << "SUCCESS: Custom line shaders loaded successfully!" << std::endl;
     }
 
     // Initialize InputManager
@@ -124,32 +124,29 @@ void Window::Init(int width, int height, std::string title) {
 }
 
 bool Window::InitializeBGFX() {
-    std::cout << "InitializeBGFX: Starting BGFX initialization..." << std::endl;
 
     // Use multi-threaded mode with Metal layer to avoid semaphore deadlock
-    std::cout << "InitializeBGFX: Setting up multi-threaded mode with Metal layer..." << std::endl;
+
 
     bgfx::Init init;
 
     // Use Metal renderer for macOS
     init.type = bgfx::RendererType::Metal;
-    std::cout << "InitializeBGFX: Using Metal renderer" << std::endl;
+
 
     // Get native window handles
     SDL_SysWMinfo wmi;
     SDL_VERSION(&wmi.version);
     if (!SDL_GetWindowWMInfo(mWindow, &wmi)) {
-        std::cout << "InitializeBGFX: Failed to get window info" << std::endl;
+        omegarace::Logger::Error("InitializeBGFX: Failed to get window info", "SDL_GetWindowWMInfo failed");
         return false;
     }
 
     // Setup Metal layer directly to avoid deadlock
     void* metalLayer = BGFX::cbSetupMetalLayer(wmi.info.cocoa.window);
-    std::cout << "InitializeBGFX: Created Metal layer directly" << std::endl;
 
     bgfx::PlatformData pd;
     pd.nwh = metalLayer; // Pass Metal layer instead of window
-    std::cout << "InitializeBGFX: Set Metal layer handle" << std::endl;
 
     init.platformData = pd;
     init.resolution.width = mWindowedWidth;
@@ -160,9 +157,7 @@ bool Window::InitializeBGFX() {
     init.callback = nullptr;
     init.allocator = nullptr;
 
-    std::cout << "InitializeBGFX: Calling bgfx::init()..." << std::endl;
     bool result = bgfx::init(init);
-    std::cout << "InitializeBGFX: bgfx::init() returned: " << (result ? "SUCCESS" : "FAILED") << std::endl;
 
     return result;
 }
@@ -201,9 +196,7 @@ void Window::CreateBloomResources() {
     mBloomFrameBuffer = bgfx::createFrameBuffer(1, bloomAttachments, true);
 
     // Create bloom uniform
-    std::cout << "About to create bloom uniform..." << std::endl;
     mBloomParams = bgfx::createUniform("u_bloomParams", bgfx::UniformType::Vec4);
-    std::cout << "Created bloom uniform successfully" << std::endl;
 
     // Create additional shader uniforms
     mGridParams = bgfx::createUniform("u_gridParams", bgfx::UniformType::Vec4);
@@ -217,51 +210,22 @@ void Window::CreateBloomResources() {
     // Try to load volumetric line shader program for bloom effects
     mBloomProgram = loadProgram("vs_volumetric_line", "fs_volumetric_line");
     if (!bgfx::isValid(mBloomProgram)) {
-        std::cout << "Volumetric line shaders not available, falling back to basic line shaders" << std::endl;
+        omegarace::Logger::Warn("Volumetric line shaders not available, falling back to basic line shaders");
         mBloomProgram = loadProgram("vs_line", "fs_line");
         if (!bgfx::isValid(mBloomProgram)) {
-            std::cout << "Basic line shaders not available either, using built-in rendering" << std::endl;
+            omegarace::Logger::Error("Basic line shaders not available either", "using built-in rendering");
             mBloomProgram = BGFX_INVALID_HANDLE;
         }
-    } else {
-        std::cout << "Successfully loaded volumetric line shaders with bloom support" << std::endl;
     }
 
     // Load additional shader programs for enhanced effects
     mGridProgram = loadProgram("vs_grid", "fs_grid");
-    if (bgfx::isValid(mGridProgram)) {
-        std::cout << "Successfully loaded grid shaders for neon background" << std::endl;
-    }
-
     mParticleProgram = loadProgram("vs_particle", "fs_particle");
-    if (bgfx::isValid(mParticleProgram)) {
-        std::cout << "Successfully loaded particle shaders for enhanced explosions" << std::endl;
-    }
-
     mShieldProgram = loadProgram("vs_shield", "fs_shield");
-    if (bgfx::isValid(mShieldProgram)) {
-        std::cout << "Successfully loaded shield shaders for glow effects" << std::endl;
-    }
-
     mPostProcessProgram = loadProgram("vs_bloom", "fs_bloom");
-    if (bgfx::isValid(mPostProcessProgram)) {
-        std::cout << "Successfully loaded post-process bloom shaders" << std::endl;
-    }
-
     mVaporTrailProgram = loadProgram("vs_vapor_trail", "fs_vapor_trail");
-    if (bgfx::isValid(mVaporTrailProgram)) {
-        std::cout << "Successfully loaded vapor trail shaders for smoky effects" << std::endl;
-    }
-
     mWarpProgram = loadProgram("vs_warp", "fs_warp");
-    if (bgfx::isValid(mWarpProgram)) {
-        std::cout << "Successfully loaded warp shaders for fullscreen neon effects" << std::endl;
-    }
-
     mElectricBarrierProgram = loadProgram("vs_electric_barrier", "fs_electric_barrier");
-    if (bgfx::isValid(mElectricBarrierProgram)) {
-        std::cout << "Successfully loaded electric barrier shaders for electric line effects" << std::endl;
-    }
 }
 
 void Window::Quit() {
@@ -389,7 +353,7 @@ bgfx::ShaderHandle Window::loadShader(const char* name) {
             rendererDir = "spirv";
             break;
         default:
-            std::cout << "Unsupported renderer for shader loading" << std::endl;
+            omegarace::Logger::Error("Unsupported renderer for shader loading", "unknown renderer type");
             return BGFX_INVALID_HANDLE;
     }
 
@@ -398,7 +362,7 @@ bgfx::ShaderHandle Window::loadShader(const char* name) {
     // Try to load shader from file
     std::ifstream file(fullPath, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
-        std::cout << "Failed to open shader file: " << fullPath << std::endl;
+        omegarace::Logger::Error("Failed to open shader file", fullPath);
         return BGFX_INVALID_HANDLE;
     }
 
@@ -407,7 +371,7 @@ bgfx::ShaderHandle Window::loadShader(const char* name) {
 
     std::vector<char> buffer(size);
     if (!file.read(buffer.data(), size)) {
-        std::cout << "Failed to read shader file: " << fullPath << std::endl;
+        omegarace::Logger::Error("Failed to read shader file", fullPath);
         return BGFX_INVALID_HANDLE;
     }
 
@@ -415,7 +379,7 @@ bgfx::ShaderHandle Window::loadShader(const char* name) {
     bgfx::ShaderHandle shader = bgfx::createShader(mem);
 
     if (!bgfx::isValid(shader)) {
-        std::cout << "Failed to create shader from: " << fullPath << std::endl;
+        omegarace::Logger::Error("Failed to create shader from", fullPath);
         return BGFX_INVALID_HANDLE;
     }
 
@@ -427,7 +391,8 @@ bgfx::ProgramHandle Window::loadProgram(const char* vsName, const char* fsName) 
     bgfx::ShaderHandle fs = loadShader(fsName);
 
     if (!bgfx::isValid(vs) || !bgfx::isValid(fs)) {
-        std::cout << "Failed to load shaders for program: " << vsName << ", " << fsName << std::endl;
+        std::string shaderNames = std::string(vsName) + ", " + std::string(fsName);
+        omegarace::Logger::Error("Failed to load shaders for program", shaderNames);
 
         // Clean up any valid shaders
         if (bgfx::isValid(vs))
@@ -441,11 +406,11 @@ bgfx::ProgramHandle Window::loadProgram(const char* vsName, const char* fsName) 
     bgfx::ProgramHandle program = bgfx::createProgram(vs, fs, true);
 
     if (!bgfx::isValid(program)) {
-        std::cout << "Failed to create shader program from: " << vsName << ", " << fsName << std::endl;
+        std::string shaderNames = std::string(vsName) + ", " + std::string(fsName);
+        omegarace::Logger::Error("Failed to create shader program from", shaderNames);
         return BGFX_INVALID_HANDLE;
     }
 
-    std::cout << "Successfully loaded shader program: " << vsName << ", " << fsName << std::endl;
     return program;
 }
 
@@ -1108,12 +1073,12 @@ void Window::DrawFullScreenWarp(float intensity, float time) {
             warpLayoutInitialized = true;
         }
         
-        // Set warp shader parameters for advanced effects
+        // Set warp shader parameters for blackhole grid effect
         float warpParams[4] = {
-            time,                           // x: Animation time for wave propagation
-            intensity * 2.0f,              // y: Effect intensity (boosted for visibility)
-            0.8f + 0.2f * sinf(time),      // z: Dynamic wave frequency 
-            5.0f + 2.0f * cosf(time * 0.7f) // w: Ring count (animated between 3-7 rings)
+            time,                           // x: Animation time for blackhole dynamics
+            intensity * 1.5f,              // y: Effect intensity (moderate boost for visibility)
+            2.5f + 1.0f * sinf(time * 0.5f), // z: Blackhole gravitational strength (2-3.5 range)
+            8.0f + 2.0f * sinf(time * 0.3f) // w: Grid density (6-10 range for good detail)
         };
         
         if (bgfx::isValid(mWarpParams)) {
@@ -1452,5 +1417,6 @@ void Window::DrawElectricBarrierLine(Line* LineLocation, const Color& LineColor,
         bgfx::submit(mMainView, mElectricBarrierProgram);
     }
 }
+
 
 } // namespace omegarace

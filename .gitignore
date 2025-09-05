@@ -1,6 +1,8 @@
 # Xcode
 .DS_Store
 
+elixir*.log
+
 ## User settings
 xcuserdata/
 
@@ -11,6 +13,7 @@ xcuserdata/
 ## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
 dist/
 build/
+build-xcode/
 DerivedData/
 *.moved-aside
 *.pbxuser

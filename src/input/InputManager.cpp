@@ -62,17 +62,6 @@ void InputManager::Update() {
                 SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN) != 0;
             mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_TRIGGER_1] = 
                 SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) != 0;
-            
-            // Debug: Check for alternative button mappings that might work for PS controllers
-            static int debugCounter = 0;
-            debugCounter++;
-            if (debugCounter % 180 == 0) { // Every 3 seconds
-                std::cout << "=== SDL Button State Debug ===" << std::endl;
-                std::cout << "START button: " << (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START) ? "PRESSED" : "released") << std::endl;
-                std::cout << "BACK button: " << (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK) ? "PRESSED" : "released") << std::endl;
-                std::cout << "GUIDE button: " << (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_GUIDE) ? "PRESSED" : "released") << std::endl;
-                std::cout << "MISC1 button: " << (SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_MISC1) ? "PRESSED" : "released") << std::endl;
-            }
         }
     }
     
@@ -261,6 +250,7 @@ SDL_Scancode InputManager::mapKeyToScancode(int key) {
         case KEY_S: return SDL_SCANCODE_S;
         case KEY_N: return SDL_SCANCODE_N;
         case KEY_P: return SDL_SCANCODE_P;
+        case KEY_T: return SDL_SCANCODE_T;
         case KEY_LEFT: return SDL_SCANCODE_LEFT;
         case KEY_RIGHT: return SDL_SCANCODE_RIGHT;
         case KEY_UP: return SDL_SCANCODE_UP;

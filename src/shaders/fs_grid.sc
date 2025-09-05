@@ -23,12 +23,29 @@ void main()
     vec2 toPlayer = gridUV - playerPos;
     float distToPlayer = length(toPlayer * vec2(800.0, 600.0)); // Scale by screen dimensions
     
-    // Apply radial distortion around player
+    // Apply radial distortion around player or wave distortion during dissolution
     if (distToPlayer < distortRadius && distortStrength > 0.0) {
         float distortFactor = 1.0 - (distToPlayer / distortRadius);
         distortFactor = distortFactor * distortFactor; // Smoother falloff
-        vec2 distortion = normalize(toPlayer) * distortFactor * distortStrength * 0.1;
-        gridUV += distortion;
+        
+        // For wave distortion (during dissolution), create vertical wave effect
+        if (distortRadius > 200.0) { // Wave mode (large radius indicates wave)
+            // Create vertical wave distortion with horizontal propagation
+            float waveX = gridUV.x - playerPos.x; // Distance from wave center
+            float waveInfluence = exp(-abs(waveX) * 8.0); // Sharp wave front
+            
+            // Create vertical oscillation that varies with Y position
+            float waveOffset = sin(gridUV.y * 15.0 + time * 6.0) * waveInfluence * distortStrength * 0.2;
+            gridUV.x += waveOffset;
+            
+            // Add radial expansion from wave center
+            vec2 radialDistortion = normalize(toPlayer) * waveInfluence * distortStrength * 0.15;
+            gridUV += radialDistortion;
+        } else {
+            // Normal player distortion
+            vec2 distortion = normalize(toPlayer) * distortFactor * distortStrength * 0.1;
+            gridUV += distortion;
+        }
     }
     
     // Create grid pattern with distorted UV coordinates
