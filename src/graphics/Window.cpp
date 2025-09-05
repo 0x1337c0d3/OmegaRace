@@ -44,7 +44,6 @@ bgfx::ProgramHandle Window::mParticleProgram = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle Window::mShieldProgram = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle Window::mPostProcessProgram = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle Window::mVaporTrailProgram = BGFX_INVALID_HANDLE;
-bgfx::ProgramHandle Window::mWarpProgram = BGFX_INVALID_HANDLE;
 bgfx::ProgramHandle Window::mElectricBarrierProgram = BGFX_INVALID_HANDLE;
 bgfx::FrameBufferHandle Window::mBloomFrameBuffer = BGFX_INVALID_HANDLE;
 bgfx::TextureHandle Window::mBloomTexture = BGFX_INVALID_HANDLE;
@@ -224,7 +223,6 @@ void Window::CreateBloomResources() {
     mShieldProgram = loadProgram("vs_shield", "fs_shield");
     mPostProcessProgram = loadProgram("vs_bloom", "fs_bloom");
     mVaporTrailProgram = loadProgram("vs_vapor_trail", "fs_vapor_trail");
-    mWarpProgram = loadProgram("vs_warp", "fs_warp");
     mElectricBarrierProgram = loadProgram("vs_electric_barrier", "fs_electric_barrier");
 }
 
@@ -269,11 +267,6 @@ void Window::ShutdownBGFX() {
     if (bgfx::isValid(mPostProcessProgram)) {
         bgfx::destroy(mPostProcessProgram);
         mPostProcessProgram = BGFX_INVALID_HANDLE;
-    }
-
-    if (bgfx::isValid(mWarpProgram)) {
-        bgfx::destroy(mWarpProgram);
-        mWarpProgram = BGFX_INVALID_HANDLE;
     }
 
     if (bgfx::isValid(mElectricBarrierProgram)) {
@@ -793,7 +786,7 @@ int Window::Random(int Min, int Max) {
 }
 
 // Enhanced shader-based effects for Geometry Wars style neon aesthetics
-void Window::DrawNeonGrid(float gridSize, float lineWidth, float glowIntensity, const Color& gridColor, Vector2f* playerPos) {
+void Window::DrawNeonGrid(float gridSize, float lineWidth, float glowIntensity, const Color& gridColor, Vector2f* playerPos, float warpIntensity) {
     if (!bgfx::isValid(mGridProgram)) {
         return; // Fallback if shaders not available
     }
@@ -852,6 +845,12 @@ void Window::DrawNeonGrid(float gridSize, float lineWidth, float glowIntensity, 
     }
     if (bgfx::isValid(mGridPlayerPos)) {
         bgfx::setUniform(mGridPlayerPos, playerParams);
+    }
+    
+    // Set warp parameters for electrical surge effect
+    float warpParams[4] = {warpIntensity, 0.0f, 0.0f, 0.0f};
+    if (bgfx::isValid(mWarpParams)) {
+        bgfx::setUniform(mWarpParams, warpParams);
     }
     
     // Submit grid rendering
@@ -1027,171 +1026,6 @@ std::string Window::dataPath() {
 
     // Fallback to relative path if unable to get executable path
     return "../Resources";
-}
-
-
-
-void Window::BeginBloomMode() {
-    // TODO: Implement BGFX bloom mode
-}
-
-void Window::EndBloomMode() {
-    // TODO: Implement BGFX bloom mode
-}
-
-// Full screen warp effect for dramatic wave transitions
-// Enhanced full screen warp effect using a specialized shader for dramatic neon transitions
-void Window::DrawFullScreenWarp(float intensity, float time) {
-    // If we have the specialized warp shader, use it for a much better effect
-    if (bgfx::isValid(mWarpProgram)) {
-        // Create a fullscreen quad that covers the entire logical game area
-        struct WarpVertex {
-            float x, y;
-            float r, g, b, a;
-            float u, v; // Texture coordinates for shader effects
-        };
-        
-        // Fullscreen quad vertices covering logical game dimensions
-        WarpVertex vertices[4] = {
-            {0.0f, 0.0f, 1.0f, 1.0f, 1.0f, intensity, 0.0f, 0.0f},                         // Top-left
-            {GAME_WIDTH, 0.0f, 1.0f, 1.0f, 1.0f, intensity, 1.0f, 0.0f},                   // Top-right
-            {GAME_WIDTH, GAME_HEIGHT, 1.0f, 1.0f, 1.0f, intensity, 1.0f, 1.0f},            // Bottom-right
-            {0.0f, GAME_HEIGHT, 1.0f, 1.0f, 1.0f, intensity, 0.0f, 1.0f}                   // Bottom-left
-        };
-        
-        uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
-        
-        // Create vertex layout for warp shader
-        static bgfx::VertexLayout warpLayout;
-        static bool warpLayoutInitialized = false;
-        if (!warpLayoutInitialized) {
-            warpLayout.begin()
-                .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-                .end();
-            warpLayoutInitialized = true;
-        }
-        
-        // Set warp shader parameters for blackhole grid effect
-        float warpParams[4] = {
-            time,                           // x: Animation time for blackhole dynamics
-            intensity * 1.5f,              // y: Effect intensity (moderate boost for visibility)
-            2.5f + 1.0f * sinf(time * 0.5f), // z: Blackhole gravitational strength (2-3.5 range)
-            8.0f + 2.0f * sinf(time * 0.3f) // w: Grid density (6-10 range for good detail)
-        };
-        
-        if (bgfx::isValid(mWarpParams)) {
-            bgfx::setUniform(mWarpParams, warpParams);
-        }
-        
-        // Submit warp effect rendering with additive blending for neon glow
-        bgfx::TransientVertexBuffer tvb;
-        bgfx::TransientIndexBuffer tib;
-        
-        if (bgfx::allocTransientBuffers(&tvb, warpLayout, 4, &tib, 6)) {
-            memcpy(tvb.data, vertices, sizeof(vertices));
-            memcpy(tib.data, indices, sizeof(indices));
-            
-            bgfx::setVertexBuffer(0, &tvb);
-            bgfx::setIndexBuffer(&tib);
-            
-            // Use additive blending for bright neon effect
-            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD);
-            bgfx::submit(mMainView, mWarpProgram);
-        }
-        
-        return; // Exit early when using the enhanced shader
-    }
-    
-    // Fallback to original implementation if warp shader is not available
-    // Draw concentric rings and radial lines from center
-    const int numRings = 6;
-    const int numRadials = 16;
-    float cx = GAME_WIDTH * 0.5f;
-    float cy = GAME_HEIGHT * 0.5f;
-    float maxRadius = std::min(GAME_WIDTH, GAME_HEIGHT) * 0.5f * (0.7f + 0.3f * intensity);
-    float ringAlpha = 0.5f * intensity;
-    float radialAlpha = 0.3f * intensity;
-
-    // Draw rings
-    for (int i = 1; i <= numRings; ++i) {
-        float t = float(i) / (numRings + 1);
-        float radius = maxRadius * t * (0.8f + 0.2f * sinf(time + t * 6.28f));
-        float alpha = ringAlpha * (1.0f - t * 0.5f);
-        const int segments = 64;
-        struct V {
-            float x, y;
-            float r, g, b, a; // Color as 4 separate floats for vec4 in shader
-        };
-        V verts[segments * 2];
-        for (int s = 0; s < segments; ++s) {
-            float a0 = (s) * 2.0f * 3.1415926f / segments;
-            float a1 = (s + 1) * 2.0f * 3.1415926f / segments;
-            verts[s * 2 + 0] = {cx + cosf(a0) * radius, cy + sinf(a0) * radius, 1.0f, 1.0f, 1.0f, alpha};
-            verts[s * 2 + 1] = {cx + cosf(a1) * radius, cy + sinf(a1) * radius, 1.0f, 1.0f, 1.0f, alpha};
-        }
-        static bgfx::VertexLayout layout;
-        static bool layoutInitialized = false;
-        if (!layoutInitialized) {
-            layout.begin()
-                .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
-                .end();
-            layoutInitialized = true;
-        }
-        if (bgfx::getAvailTransientVertexBuffer(segments * 2, layout) >= segments * 2) {
-            bgfx::TransientVertexBuffer tvb;
-            bgfx::allocTransientVertexBuffer(&tvb, segments * 2, layout);
-            memcpy(tvb.data, verts, sizeof(verts));
-            bgfx::setVertexBuffer(0, &tvb, 0, segments * 2);
-            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD | BGFX_STATE_PT_LINES;
-            bgfx::setState(state);
-            bgfx::submit(mMainView, mBloomProgram);
-        }
-    }
-
-    // Draw radials
-    for (int i = 0; i < numRadials; ++i) {
-        float angle = (float)i / numRadials * 2.0f * 3.1415926f;
-        float r0 = maxRadius * 0.2f * (0.8f + 0.2f * sinf(time + i));
-        float r1 = maxRadius * (0.95f + 0.05f * cosf(time * 0.7f + i));
-        float x0 = cx + cosf(angle) * r0;
-        float y0 = cy + sinf(angle) * r0;
-        float x1 = cx + cosf(angle) * r1;
-        float y1 = cy + sinf(angle) * r1;
-        struct V {
-            float x, y;
-            float r, g, b, a; // Color as 4 separate floats for vec4 in shader
-        };
-        V verts[2] = {{x0, y0, 1.0f, 1.0f, 1.0f, radialAlpha}, {x1, y1, 1.0f, 1.0f, 1.0f, radialAlpha}};
-        static bgfx::VertexLayout layout;
-        static bool layoutInitialized = false;
-        if (!layoutInitialized) {
-            layout.begin()
-                .add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
-                .end();
-            layoutInitialized = true;
-        }
-        if (bgfx::getAvailTransientVertexBuffer(2, layout) >= 2) {
-            bgfx::TransientVertexBuffer tvb;
-            bgfx::allocTransientVertexBuffer(&tvb, 2, layout);
-            memcpy(tvb.data, verts, sizeof(verts));
-            bgfx::setVertexBuffer(0, &tvb, 0, 2);
-            uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_BLEND_ADD | BGFX_STATE_PT_LINES;
-            bgfx::setState(state);
-            bgfx::submit(mMainView, mBloomProgram);
-        }
-    }
-}
-
-void Window::BeginWarpTransition() {
-    // TODO: Set up additive blending for warp effect
-}
-
-void Window::EndWarpTransition() {
-    // TODO: Restore normal blending
 }
 
 // Fullscreen support

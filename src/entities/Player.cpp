@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "../core/Logger.h"
 
 namespace omegarace {
 
@@ -10,10 +11,19 @@ Player::Player() {
     m_Active = false;
     m_Hit = false;
     m_ExplosionOn = false;
+    m_HasBeenSpawned = false; // Initialize spawn flag
     m_Radius = 16;
     m_Scale = 2.5;
     m_Rectangle.h = 16;
     m_Rectangle.w = 16;
+
+    // Initialize border hit arrays to false
+    for (int i = 0; i < 4; i++) {
+        m_InsideLineHit[i] = false;
+    }
+    for (int i = 0; i < 8; i++) {
+        m_OutsideLineHit[i] = false;
+    }
 
     m_MaxThrust = 325;
     m_ThrustMagnitude = 3.666;
@@ -72,7 +82,10 @@ void Player::update(double frame) {
     updateShots(frame);
 
     if (m_Active && !m_Hit) {
-        updateEdge();
+        // Only do edge detection if player has been properly spawned
+        if (m_HasBeenSpawned) {
+            updateEdge();
+        }
         updateRotationThrust();
         updateShip();
         pShip->update(m_Rotation.amount, m_Location, m_Scale);
@@ -175,6 +188,7 @@ void Player::spawn(bool rightSide) {
 
     m_Location.y = Window::GetWindowSize().y / 3;
     m_Hit = false;
+    m_HasBeenSpawned = true; // Mark as spawned to enable edge detection
     m_Acceleration = Vector2i();
     m_Velocity = Vector2i();
     pShip->setShieldStrength(0.25);
@@ -304,6 +318,7 @@ void Player::updateEdge() {
     }
 
     if (rectangleIntersect(m_InsideBorder)) {
+        Logger::Info("Intersect");
         AudioEngine::PlaySoundFile("BorderHit");
 
         int maxborder = m_InsideBorder.x + m_InsideBorder.w - 1;

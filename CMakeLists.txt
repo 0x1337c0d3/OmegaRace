@@ -369,8 +369,6 @@ if(PLATFORM_MACOS)
     compile_shader("fs_bloom" "fragment")
     compile_shader("vs_vapor_trail" "vertex")
     compile_shader("fs_vapor_trail" "fragment")
-    compile_shader("vs_warp" "vertex")
-    compile_shader("fs_warp" "fragment")
     compile_shader("vs_electric_barrier" "vertex")
     compile_shader("fs_electric_barrier" "fragment")
     

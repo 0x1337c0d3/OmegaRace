@@ -95,16 +95,16 @@ void Game::onUpdate() {
 }
 
 void Game::onRender() {
-    // Draw neon grid background for Geometry Wars style with player distortion
-    if (!pGameController->isWarpActive()) {
-        // More subtle grid: thinner lines, dimmer colors, lower alpha
-        if (pGameController->isPlayerActive()) {
-            Vector2f playerPos = pGameController->getPlayerPosition();
-            Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, &playerPos);
-        } else {
-            // No distortion when player is inactive
-            Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, nullptr);
-        }
+    // Always draw neon grid background with electrical surge effect during warp
+    float warpIntensity = pGameController->getWarpIntensity();
+    
+    // More subtle grid: thinner lines, dimmer colors, lower alpha
+    if (pGameController->isPlayerActive()) {
+        Vector2f playerPos = pGameController->getPlayerPosition();
+        Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, &playerPos, warpIntensity);
+    } else {
+        // No player distortion when player is inactive, but still show warp surge
+        Window::DrawNeonGrid(32.0f, 0.025f, 1.0f, {0, 150, 200, 60}, nullptr, warpIntensity);
     }
     
     pGameController->draw();

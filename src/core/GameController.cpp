@@ -160,7 +160,7 @@ void GameController::update(double Frame) {
             // Check if warp has completed
             if (!m_WarpActive && m_WaitingForWarp) {
                 // Warp completed - spawn new wave
-                spawnNewWave(pTheEnemyController->restartWave());
+                spawnNewWave(pTheEnemyController->newWave());
                 m_EndOfWave = false;
                 m_WaitingForWarp = false;
             }
@@ -181,12 +181,10 @@ void GameController::update(double Frame) {
         }
     }
 
-    if (!pThePlayer->getActive()) {
+    // Only show GAME OVER if the player is truly out of lives
+    if (!pThePlayer->getActive() && m_PlayerShips <= 0) {
         if (m_Timer < pTimer->seconds()) {
-            m_State++;
-            if (m_State > 2)
-                m_State = 0;
-            pStatus->setState(states[m_State]);
+            pStatus->setState(StatusDisplay::APP_GAMEOVER);
             m_Timer = pTimer->seconds() + m_TimerAmount * 0.05;
         }
     }
@@ -241,10 +239,6 @@ void GameController::draw() {
                 // Ramp down from 1.0 to 0.5, not to 0
                 intensity = 0.5f + ((1.0f - warpProgress) * 1.0f); // Ramp from 1.0 to 0.5
             }
-
-            Window::BeginWarpTransition();
-            Window::DrawFullScreenWarp(intensity, elapsedTime * 2.0f);
-            Window::EndWarpTransition();
         } else {
             m_WarpActive = false; // Effect finished
             
@@ -1251,33 +1245,42 @@ void GameController::handlePauseInput() {
     if (InputManager::IsControllerConnected()) {
         int gamepadId = 0; // InputManager handles controller detection internally
         
-        // Use proper pressed detection (only trigger on press, not hold)
-        bool optionsPressed = InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT);
-        bool sharePressed = InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT);
+        // Static variables for edge detection of pause buttons
+        static bool lastOptionsState = false;
+        static bool lastShareState = false;
+        
+        // Use same edge detection pattern as keyboard input
+        bool currentOptionsState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+        bool currentShareState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_MIDDLE_LEFT);
         
         // Options button for RESUME game (start new game logic moved to main update)
-        if (optionsPressed) {
+        if (currentOptionsState && !lastOptionsState) {
             if (pThePlayer->getActive() && m_IsPaused) {
                 // Game is paused - resume
                 togglePause(); // This will unpause
+                lastOptionsState = currentOptionsState;
                 return;
             }
             // Note: New game logic is now handled in main update method before handlePauseInput
         }
+        lastOptionsState = currentOptionsState;
 
         // Share button for PAUSE/UNPAUSE during active gameplay
-        if (sharePressed) {
+        if (currentShareState && !lastShareState) {
             if (pThePlayer->getActive() && !m_IsPaused) {
                 // During active gameplay - pause the game
                 togglePause();
+                lastShareState = currentShareState;
                 return;
             } else if (pThePlayer->getActive() && m_IsPaused) {
                 // Game is paused - unpause it
                 togglePause();
+                lastShareState = currentShareState;
                 return;
             }
             // If player not active, Share does nothing
         }
+        lastShareState = currentShareState;
     }
     
     // Only handle menu navigation if we're actually paused and menu is visible
@@ -1329,22 +1332,32 @@ void GameController::handlePauseInput() {
     }
     lastSelectKeyState = currentSelectKeyState;
     
-    // Handle controller input for pause menu with proper pressed detection
+    // Handle controller input for pause menu with same edge detection pattern as keyboard
     if (InputManager::IsControllerConnected()) {
         int gamepadId = 0; // InputManager handles controller detection internally
         
-        // D-pad navigation with proper pressed detection
-        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_UP)) {
+        // Static variables for gamepad edge detection (same pattern as keyboard)
+        static bool lastGamepadUpState = false;
+        static bool lastGamepadDownState = false;
+        static bool lastGamepadSelectState = false;
+        
+        // D-pad navigation with edge detection
+        bool currentGamepadUpState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_DPAD_UP);
+        if (currentGamepadUpState && !lastGamepadUpState) {
             pPauseMenu->handleUp();
         }
+        lastGamepadUpState = currentGamepadUpState;
         
-        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_DPAD_DOWN)) {
+        bool currentGamepadDownState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_DPAD_DOWN);
+        if (currentGamepadDownState && !lastGamepadDownState) {
             pPauseMenu->handleDown();
         }
+        lastGamepadDownState = currentGamepadDownState;
         
-        // Face buttons (X, A) for select with proper pressed detection
-        if (InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_A) || 
-            InputManager::IsGamepadButtonPressed(gamepadId, GAMEPAD_BUTTON_X)) {
+        // Face buttons (X, A) for select with edge detection
+        bool currentGamepadSelectState = InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_A) || 
+                                        InputManager::IsGamepadButtonDown(gamepadId, GAMEPAD_BUTTON_X);
+        if (currentGamepadSelectState && !lastGamepadSelectState) {
             PauseMenu::MENU_OPTION selectedOption = pPauseMenu->getSelectedOption();
             
             if (selectedOption == PauseMenu::RESUME) {
@@ -1365,6 +1378,7 @@ void GameController::handlePauseInput() {
                 m_IsPaused = false; // Unpause to allow game over state to display
             }
         }
+        lastGamepadSelectState = currentGamepadSelectState;
     }
 }
 
@@ -1398,6 +1412,31 @@ bool omegarace::GameController::isPlayerActive() const {
 // NEW: Check if warp transition is active
 bool omegarace::GameController::isWarpActive() const {
     return m_WarpActive;
+}
+
+float omegarace::GameController::getWarpIntensity() const {
+    if (!m_WarpActive) {
+        return 0.0f;  // No warp effect
+    }
+    
+    // Calculate the same intensity used in the warp effect
+    float elapsedTime = pTimer->seconds() - m_WarpStartTime;
+    float warpProgress = elapsedTime / m_WarpDuration;
+    
+    if (warpProgress >= 1.0f) {
+        return 0.0f; // Warp finished
+    }
+    
+    float intensity;
+    if (warpProgress < 0.5f) {
+        // Start at 0.5 minimum, peak at 1.0 at midpoint
+        intensity = 0.5f + (warpProgress * 1.0f); // Ramp from 0.5 to 1.0
+    } else {
+        // Ramp down from 1.0 to 0.5, not to 0
+        intensity = 0.5f + ((1.0f - warpProgress) * 1.0f); // Ramp from 1.0 to 0.5
+    }
+    
+    return intensity;
 }
 
 } // namespace omegarace

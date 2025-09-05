@@ -53,7 +53,7 @@ class Window {
 
     // Enhanced shader-based effects for Geometry Wars style
     static void DrawNeonGrid(float gridSize = 32.0f, float lineWidth = 0.02f, float glowIntensity = 1.0f, 
-                            const Color& gridColor = {0, 100, 255, 80}, Vector2f* playerPos = nullptr);
+                            const Color& gridColor = {0, 100, 255, 80}, Vector2f* playerPos = nullptr, float warpIntensity = 0.0f);
     static void ResetGridDistortion(); // Reset grid distortion when player is inactive
     static void DrawParticleEffect(Vector2i* position, float size = 8.0f, float intensity = 1.0f, 
                                   const Color& particleColor = {255, 255, 255, 255});
@@ -73,15 +73,6 @@ class Window {
     // Window management
     static bool ShouldClose();
     static void SetShouldClose(bool shouldClose);
-
-    // Shader support for advanced effects (placeholder)
-    static void BeginBloomMode();
-    static void EndBloomMode();
-
-    // Full screen warp effect for wave transitions (placeholder)
-    static void DrawFullScreenWarp(float intensity = 1.0f, float time = 0.0f);
-    static void BeginWarpTransition();
-    static void EndWarpTransition();
 
     // Fullscreen support
     static bool CheckForFullscreenToggle();
@@ -108,7 +99,6 @@ class Window {
     static bgfx::ProgramHandle mShieldProgram;
     static bgfx::ProgramHandle mPostProcessProgram;
     static bgfx::ProgramHandle mVaporTrailProgram;
-    static bgfx::ProgramHandle mWarpProgram;
     static bgfx::ProgramHandle mElectricBarrierProgram;
     static bgfx::FrameBufferHandle mBloomFrameBuffer;
     static bgfx::TextureHandle mBloomTexture;

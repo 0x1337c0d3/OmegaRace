@@ -32,6 +32,7 @@ class GameController : Common {
     Vector2f getPlayerPosition() const;
     bool isPlayerActive() const; // NEW: Check if player is active for grid distortion
     bool isWarpActive() const;   // NEW: Check if warp transition is active
+    float getWarpIntensity() const; // NEW: Get current warp intensity for grid surge effect
 
   private:
     void newGame();

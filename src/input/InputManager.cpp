@@ -44,6 +44,9 @@ void InputManager::Update() {
                 SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A) != 0;
             mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_LEFT] = 
                 SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X) != 0;
+            // Also update the alternative A/X names (they have same values but ensure both are set)
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_A] = mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_DOWN];
+            mGamepadButtonsCurrent[GAMEPAD_BUTTON_X] = mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_LEFT];
             mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_RIGHT] = 
                 SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_B) != 0;
             mGamepadButtonsCurrent[GAMEPAD_BUTTON_RIGHT_FACE_UP] = 
@@ -202,6 +205,9 @@ int InputManager::findController() {
         if (SDL_IsGameController(i)) {
             SDL_GameController* controller = SDL_GameControllerOpen(i);
             if (controller) {
+                // Get the instance ID, not the joystick index
+                SDL_JoystickID instanceId = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller));
+                
                 const char* name = SDL_GameControllerName(controller);
                 if (name) {
                     std::string nameStr = name;
@@ -211,12 +217,12 @@ int InputManager::findController() {
                     if (nameStr.find("ps4") != std::string::npos || nameStr.find("dualshock") != std::string::npos ||
                         nameStr.find("dualsense") != std::string::npos || nameStr.find("sony") != std::string::npos ||
                         nameStr.find("wireless controller") != std::string::npos) {
-                        // Preferred controller found
-                        return i;
+                        // Preferred controller found - return instance ID
+                        return instanceId;
                     }
                 }
-                // Keep first available controller as fallback
-                return i;
+                // Keep first available controller as fallback - return instance ID
+                return instanceId;
             }
         }
     }
@@ -225,8 +231,11 @@ int InputManager::findController() {
 
 void InputManager::updateControllerDetection() {
     // Check if current controller is still connected
-    if (mControllerIndex >= 0 && !SDL_GameControllerGetAttached(SDL_GameControllerFromInstanceID(mControllerIndex))) {
-        mControllerIndex = -1;
+    if (mControllerIndex >= 0) {
+        SDL_GameController* controller = SDL_GameControllerFromInstanceID(mControllerIndex);
+        if (!controller || !SDL_GameControllerGetAttached(controller)) {
+            mControllerIndex = -1;
+        }
     }
 
     // Check for new controllers periodically

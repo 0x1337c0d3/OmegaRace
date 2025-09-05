@@ -59,6 +59,7 @@ class Player : public Entity {
     bool m_TurnLeft;
     bool m_Hit;
     bool m_ExplosionOn;
+    bool m_HasBeenSpawned; // NEW: Track if player has been spawned yet
     bool m_InsideLineHit[4];
     bool m_OutsideLineHit[8];
     int m_NumberOfShots;
