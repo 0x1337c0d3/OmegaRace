@@ -14,6 +14,8 @@ add_compile_definitions(VMATH_NAMESPACE=omegarace)
 # Platform detection
 if(APPLE)
     set(PLATFORM_MACOS TRUE)
+    # Set deployment target for modern macOS (supports std::filesystem and all modern features)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "macOS deployment target" FORCE)
     # Build as universal binary for macOS (both arm64 and x86_64)
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures" FORCE)
 elseif(WIN32)
@@ -236,7 +238,7 @@ if(PLATFORM_MACOS)
         XCODE_ATTRIBUTE_DEVELOPMENT_LANGUAGE "en"
         XCODE_ATTRIBUTE_EXECUTABLE_NAME "${PROJECT_NAME}"
         XCODE_ATTRIBUTE_PRODUCT_NAME "OmegaRace"
-        XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "10.15"
+        XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "13.0"
         XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "ASB8U9Q83W"
         XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development"
         XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"

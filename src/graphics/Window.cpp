@@ -1,3 +1,4 @@
+#include <filesystem>
 #include "Window.h"
 #include "MetalLayerSetup.h"
 #include "../input/InputManager.h"
@@ -12,7 +13,6 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
-#include <filesystem>
 #include <fstream>
 #include <vector>
 
@@ -691,7 +691,7 @@ void Window::DrawPoint(Vector2i* Location, const Color& PointColor) {
     rect.y = (float)Location->y;
     rect.width = 1.0f;
     rect.height = 1.0f;
-    // DrawRect(&rect, PointColor);
+    DrawRect(&rect, PointColor);
 }
 
 void Window::DrawRect(const Rectangle* RectangleLocation, const Color& RectangleColor) {
@@ -1018,9 +1018,10 @@ std::string Window::dataPath() {
     char path[1024];
     uint32_t size = sizeof(path);
     if (_NSGetExecutablePath(path, &size) == 0) {
+        // Use std::filesystem to handle path manipulation
         std::filesystem::path execPath(path);
-        std::filesystem::path resourcePath = execPath.parent_path() / ".." / "Resources";
-        return resourcePath.string();
+        // Navigate to Resources directory: OmegaRace.app/Contents/MacOS/OmegaRace -> OmegaRace.app/Contents/Resources
+        return execPath.parent_path().parent_path() / "Resources";
     }
 #endif
 

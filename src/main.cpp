@@ -1,7 +1,7 @@
 #include "core/Game.h"
 #include <iostream>
 
-int main(int argc, char* args[]) {
+int main(int, char**) {
     omegarace::Game game;
 
     return game.OnExecute();
